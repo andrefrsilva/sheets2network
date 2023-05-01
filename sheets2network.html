@@ -1,0 +1,82 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Example</title>
+  <!-- Add the script tag with the URL of the vis.js file -->
+  <script src="https://visjs.github.io/vis-network/standalone/umd/vis-network.min.js"></script>
+  <!-- Add the SheetJS library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+</head>
+<body>
+<div>
+  <input type="file" id="inputExcel" accept=".xlsx, .xls" />
+</div>  
+<div id="mynetwork"></div>
+  
+  <style>
+    #mynetwork {
+  margin: 0px;
+  padding: 0px;
+  position: fixed;
+  left: 0px;
+  top: 0px;
+  bottom: 0px;
+  right: 0%;
+  min-height: 100vh;
+  border-right: 1px solid gray;
+z-index: -1;
+
+}
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      var nodes = new vis.DataSet([]);
+      var edges = new vis.DataSet([]);
+
+      // create a network
+      var container = document.getElementById("mynetwork");
+      var data = {
+        nodes: nodes,
+        edges: edges,
+      };
+      var options = {};
+      var network = new vis.Network(container, data, options);
+
+      document.getElementById("inputExcel").addEventListener("change", function(evt) {
+        var file = evt.target.files[0];
+        var reader = new FileReader();
+
+        reader.onload = function(e) {
+          var data = e.target.result;
+          var workbook = XLSX.read(data, { type: "binary" });
+
+          // Read "nodes" sheet
+          var nodesSheet = workbook.Sheets["nodes"];
+          var nodesData = XLSX.utils.sheet_to_json(nodesSheet, { header: 1 });
+          nodesData.shift(); // Remove header row
+
+          nodesData.forEach(function(row) {
+            var nodeId = row[0].replace(/\s+/g, ''); // Remove spaces
+            nodes.add({ id: nodeId, label: row[0] });
+          });
+
+          // Read "edges" sheet
+          var edgesSheet = workbook.Sheets["edges"];
+          var edgesData = XLSX.utils.sheet_to_json(edgesSheet, { header: 1 });
+          edgesData.shift(); // Remove header row
+
+          edgesData.forEach(function(row) {
+            edges.add({ from: row[0].replace(/\s+/g, ''), to: row[1].replace(/\s+/g, ''), arrows: "to" });
+          });
+
+          // Update the network
+          network.setData({ nodes: nodes, edges: edges });
+        };
+
+        reader.readAsBinaryString(file);
+      });
+    });
+  </script>
+</body>
+</html>
