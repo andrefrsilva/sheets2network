@@ -1,0 +1,2378 @@
+<head>
+  <!--
+By André FR Silva, 2023
+Examples:
+     - Arrhythmia ECG: <a href="https://i.postimg.cc/1zxRVLXZ/image.png">https://i.postimg.cc/1zxRVLXZ/image.png</a>
+     - Regular ECG: <a href="https://i.postimg.cc/QxBfX5Gh/image.png">https://i.postimg.cc/QxBfX5Gh/image.png</a>
+-->
+      
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://visjs.github.io/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>    
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Arial', monospace;
+    }
+    
+    .title {
+      background-color: black;
+      color: white;
+      padding: 5px;
+      width: 100%;
+      text-align: center;
+    }
+    
+.special-letter {
+      font-size: 36px;
+      font-weight: bold;
+      color: red;
+      display: inline-block;
+      animation: special-letter-animation 1.2s infinite;
+    }
+
+    @keyframes special-letter-animation {
+      0% {
+        transform: scale(1);
+      }
+      10% {
+        transform: scale(1.7);
+      }
+      20% {
+        transform: scale(1);
+      }
+      30% {
+        transform: scale(2);
+      }
+      70% {
+        transform: scale(1.1);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+    
+    .tooltip {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 5px;
+    z-index: 1000;
+}
+
+.tooltip img {
+    max-width: 100%;
+    max-height: 300px;
+}
+
+    #recordTimeButton {
+    width: 100%;
+    padding: 20px;
+    font-size: 18px;
+    cursor: pointer;
+}
+  
+           #video-player {
+            width: 720px;
+        }
+    
+   .drop-zone {
+    border: 2px dashed #aaa;
+    padding: 20px;
+    margin: 10px 0;
+    text-align: center;
+    transition: border-color .3s;
+  }
+  
+  .drop-zone.dragover {
+    border-color: #007bff;
+  }
+    
+      .drop-zone2 {
+    border: 2px dashed #aaa;
+    padding: 20px;
+    margin: 10px 0;
+    text-align: center;
+    transition: border-color .3s;
+  }
+  
+  .drop-zone2.dragover {
+    border-color: #007bff;
+  }
+    
+      .drop-zone3 {
+    border: 2px dashed #aaa;
+    padding: 20px;
+    margin: 10px 0;
+    text-align: center;
+    transition: border-color .3s;
+  }
+  
+  .drop-zone3.dragover {
+    border-color: #007bff;
+  }
+    
+    .marker {
+    position: absolute;
+    height: 6px;
+    width: 6px;
+    background: black;
+    border-radius: 50%;
+}
+    
+   #ecg {
+      width: 98%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    
+       #ecg2 {
+      width: 98%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }  
+    
+    #ecg3 {
+      width: 98%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }  
+    
+    #ecg4 {
+      width: 98%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }  
+
+    table {
+      width: 100%; 
+      border-collapse: collapse;
+        table-layout: fixed;
+    }
+    
+
+td {
+    width: 50%;
+}
+    
+        td:first-child {
+        text-align: right;
+    }
+
+    td:last-child {
+        text-align: left;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+    
+    .toggle-switch-label {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+
+    .toggle-switch-label input[type="checkbox"] {
+      display: none;
+    }
+
+    .toggle-switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: red;
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .toggle-switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input[type="checkbox"]:checked + .toggle-switch-slider {
+      background-color: #AAFF00;
+    }
+
+    input[type="checkbox"]:checked + .toggle-switch-slider:before {
+      transform: translateX(26px);
+    }
+    
+  .image-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+
+    .image-container img {
+      max-width: 35%;
+      height: auto;
+    }    
+    
+      #mynetwork {
+    width: 400px;
+    height: 400px;
+    border: 1px solid lightgray;
+    background-color: white; /* Add this line */
+  }   
+   
+   #degreeChart, #clusteringChart {
+  display: none;
+  height: 400px;
+}
+    
+  </style>
+</head>
+
+<body>  
+  
+  <center>
+  <h3><a href="https://medicinup.blogspot.com/p/ecgshop.html">Voltar</a></h3><br>
+  </center>
+    
+  <div class="image-container">
+      <h1><span class="special-letter">EEG</span> SHOP 💻</h1>
+  </div>
+   
+  <div class="image-container">
+    <center>
+    <h3>Resumindo, concluindo e não baralhando os mandamentos do Dr. Nuno Cortez-Dias. <br> E que Deus Nosso Senhor esteja do nosso lado.</h3>
+    </center>
+</div>
+  <br>
+   <div class="image-container">
+  <div id="video-player">
+        <video width="100%" height="100%" controls>
+            <source src="https://github.com/andrefrsilva/sheets2network/raw/main/ECG%20Shop%20-%2050%20cent%20song.mp4" type="video/mp4">
+        </video>
+    </div>
+      
+    </div>
+  
+  <br>
+    <div class="image-container">
+<div class="sketchfab-embed-wrapper"> <iframe title="Sistema de Condução do Coração" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share width="500" height="350" src="https://sketchfab.com/models/b879674717f045eca21034409ae5696e/embed?autostart=1&annotations_visible=0"> </iframe> </div>
+  </div>
+      <br>
+                       
+  <div class="image-container">
+    <img id='figures' src="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png" alt="Figure">
+  </div>
+  
+  <div class="image-container">
+    <div class="title">
+      <h1>R<span class="special-letter">A</span>TE, R<span class="special-letter">H</span>YTHM & <span class="special-letter">I</span>NTERVALS</h1>
+    </div>
+  </div>
+  
+   <br>
+  <div class="image-container">
+  <h3>Frequência, Ritmo e Intervalos</h3>
+  </div>
+  
+  <br>
+  <div class="image-container">
+        <center>
+  <h2>Carregue uma imagem recortada da derivação II com exatamente 10s (40 quadrados grandes).</h2>
+      </center>
+</div>
+  
+<div class="image-container">
+  <input type="file" id="upload" accept="image/*">
+</div>
+
+<div class="image-container">
+  <div class="drop-zone">
+    <p>Ou arraste a imagem para aqui. Ou copie e cole com control+V</p>
+  </div>
+</div>
+  <br>
+  <div class="image-container">
+<h2>Toque em cada pico (onda R <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png"></i>), da esquerda para a direita</h2>
+  </div>
+  <img id="ecg" src="https://i.postimg.cc/QxBfX5Gh/image.png" alt="ECG">
+<div id="markers-container" style="height: 20px; position: relative;"></div>
+  
+<div class="image-container">
+    <button id="recordTimeButton" style="display: none;">(alternativa à século XVIII) Clique manualmente ao ritmo da pulsação</button>
+</div>
+  
+<div class="image-container">
+    <p id="intervals" style="display: none;"></p>
+      <br>
+    </div>
+  
+  <div class="image-container">
+<h2>Frequência cardíaca (indiretamente os intervalos R-R)</h2>
+  </div>
+  
+  <div class="image-container">
+    <div style="max-width:400px;">
+      <canvas id="boxPlot" height="300"></canvas>
+    </div>  
+  <div style="max-width:400px;">
+  <canvas id="scatterPlot" height="300"></canvas>
+</div>
+  </div>
+    
+  <br>
+ 
+
+    <div class="image-container">
+      <span>Som do coração (+ romântico)</span>&nbsp;&nbsp;
+      
+      <label class="toggle-switch-label">
+    <input type="checkbox" id="soundToggle" onchange="toggleSound()">
+    <span class="toggle-switch-slider"></span>
+</label>&nbsp;&nbsp;
+      <button onclick="startBeeping()" style="font-size: 20px; padding: 15px 30px;">Tocar o ritmo do paciente</button>&nbsp;&nbsp;
+<button onclick="stopBeeping()" style="font-size: 20px; padding: 15px 30px;">Parar</button>
+  </div>
+    <br>
+  
+
+  
+  <div class="image-container">
+    <table>
+      <tr id="average-rate-row">
+        <td></td>
+        <td>Frequência Cardíaca Média <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/0yXLdzcK/image.png"></i><br>(><span class="special-letter">150</span> bpm leva a suspeita de flutter auricular)<br><h3 id="average-rate">-</h3></td>
+      </tr>
+      
+      <tr>
+        <td>
+  <label class="toggle-switch-label">
+    <input type="checkbox" class="cardiac-toggle">
+    <span class="toggle-switch-slider"></span>
+  </label>
+</td>
+      <td>Ondas <span class="special-letter">P</span> presentes e porreiras? <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.stepwards.com/wp-content/uploads/2018/03/Screen-Shot-2018-03-07-at-9.24.06-PM-2.png"></i><br>(Onda P positiva em I, II e aVF e negativa em aVR; <<span class="special-letter">120</span>ms (3 quadradinhos), Amplitude <2,5mm)</td>
+  </tr>
+      
+      <tr>
+        <td>
+  <label class="toggle-switch-label">
+    <input type="checkbox" class="cardiac-toggle">
+    <span class="toggle-switch-slider"></span>    
+  </label>
+</td>
+        <td><span class="special-letter">Q</span>RS são estreitos? <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.nurseslearning.com/courses/nrp/nrp1619/images/Figure-36.jpg"></i> <br>(Ver na derivação que tiver QRS mais longo; [60, 100]ms (Normal) | [100, 120] (Ligeiramente alargado → Hemibloqueio) | ><span class="special-letter">120</span> (3 quadradinhos) (Alargado → Bloqueio completo)<br><h3 id="average-QRS">-</h3></td>
+      </tr>
+      
+      <tr>
+       <td>
+  <label class="toggle-switch-label">
+    <input type="checkbox" class="cardiac-toggle">
+    <span class="toggle-switch-slider"></span>
+  </label>
+</td>
+        <td>Ritmo é <span class="special-letter">R</span>egular? (R-R constante) <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://d1z8zkw1yi6kd7.cloudfront.net/uploads/ckeditor/pictures/data/000/001/302//content/rhythm.jpeg"></i><br>(Nota: arritmia sinusal respiratória é fisiológica.)</td>
+      </tr>
+      
+      <tr>
+        <td>
+  <label class="toggle-switch-label">
+    <input type="checkbox" class="cardiac-toggle">
+    <span class="toggle-switch-slider"></span>
+  </label>
+</td>
+        <td>P-R / P-Q<span class="special-letter">S</span>saudável? <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.nucleotype.com/static/be2345aef6cb027a6eeda7bec95bc509/0f98f/EKG-waves-bumps.jpg"></i><br>(Ver em II; P-R entre [<span class="special-letter">120</span>, 200]ms (3 a 5 quadradinhos) e constante; Baixo? Síndrome Wolff-<strong>P</strong>a<strong>R</strong>kinson-White. Alto? Bloqueio AV de <strong>PR</strong>imeiro grau.<br><h3 id="average-PR">-</h3></td>
+      </tr>
+    </table> 
+  </div>
+
+<br>
+<div class="image-container">
+    <button id="analyzeButton"  style="font-size: 20px; padding: 15px 30px;">Analisar o ritmo</button>
+</div>
+<div class="image-container">
+    <div id="resultrhythm" style="text-align: center; font-size: 20px; margin-top: 20px;"></div>
+  </div>
+
+<br><br>
+<div class="image-container">
+<h2>Intervalos PR / PQ.</h2>
+  </div>
+  <br>
+  <div class="image-container">
+<h2>Toque em cada início e fim dos intervalos PR / PQ <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png"></i>, da esquerda para a direita</h2>
+  </div>
+<img id="ecg2" src="https://i.postimg.cc/QxBfX5Gh/image.png" alt="ECG">
+<div id="markers-container2" style="height: 20px; position: relative;"></div>
+  
+  <br>
+  <div class="image-container">
+          <div style="max-width:600px;">
+          <canvas id="boxPlot2" width = "250" height="300"></canvas>
+        </div>
+
+        <div style="max-width:600px;">
+          <canvas id="scatterPlot2" width = "300" height="300"></canvas>
+        </div>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- New Set 3 -->
+ <div class="image-container">
+<h2>Intervalos QRS.</h2>
+  </div>
+<div class="image-container">
+<span>Se estiverem maiores noutra derivação que não a II, carregue uma imagem recortada dessa.</span>
+  </div><br>
+<div class="image-container">
+    <input type="file" id="upload3" accept="image/*">
+</div><br>
+<div class="image-container">
+    <label for="secondsecg3">Duração em segundos da tira na nova imagem (1 quadrado grande = 0.2s):</label><br>
+  </div>  
+    <div class="image-container">
+    <input type="number" id="secondsecg3" name="secondsecg3" style="font-size: 20px; padding: 10px 10px;">
+  </div><br>
+<div class="image-container">
+    <h2>Toque em cada início e fim dos intervalos QRS <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png"></i>, da esquerda para a direita</h2>
+</div>
+<img id="ecg3" src="https://i.postimg.cc/QxBfX5Gh/image.png" alt="ECG">
+<div id="markers-container3" style="height: 20px; position: relative;"></div>
+<div class="image-container">
+    <p id="intervals3" style="display: none;"></p>
+</div>
+<div class="image-container">
+    <div style="max-width:400px;">
+        <canvas id="boxPlot3" height="300"></canvas>
+    </div>
+    <div style="max-width:400px;">
+        <canvas id="scatterPlot3" height="300"></canvas>
+    </div>
+</div>
+
+<!-- New Set 4 -->
+<div class="image-container">
+<h2>Intervalos QT.</h2>
+  </div>
+<div class="image-container">
+<span>Se achar melhor outra derivação não a II, carregue uma imagem recortada dessa.</span>
+  </div><br>
+<div class="image-container">
+    <input type="file" id="upload4" accept="image/*">
+</div>
+<br>
+<div class="image-container">
+    <label for="secondsecg4">Duração em segundos da tira na nova imagem (1 quadrado grande = 0.2s):</label><br>
+  </div>  
+    <div class="image-container">
+    <input type="number" id="secondsecg4" name="secondsecg4" style="font-size: 20px; padding: 10px 10px;">
+  </div><br>
+
+<div class="image-container">
+    <h2>Toque em cada início e fim dos intervalos QT <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png"></i>, da esquerda para a direita</h2>
+</div>
+<img id="ecg4" src="https://i.postimg.cc/QxBfX5Gh/image.png" alt="ECG">
+<div id="markers-container4" style="height: 20px; position: relative;"></div>
+<div class="image-container">
+    <p id="intervals4" style="display: none;"></p>
+</div>
+
+<div class="image-container">
+<h3>Intervalos QT corrigidos</h3>
+  </div><br>
+
+<div class="image-container">
+    <div style="max-width:400px;">
+        <canvas id="boxPlot4" height="300"></canvas>
+    </div>
+    <div style="max-width:400px;">
+        <canvas id="scatterPlot4" height="300"></canvas>
+    </div>
+</div>
+
+<div class="image-container">
+    <table>      
+      <tr>
+        <td>
+  <label class="toggle-switch-label">
+    <input type="checkbox">
+    <span class="toggle-switch-slider"></span>
+  </label>
+</td>
+        <td>QT corrigido <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/Y2n6JCD1/image.png"></i> <br><h3 id="average-QT">-</h3></td>
+      </tr>   
+    </table> 
+  </div>
+
+
+  <div class="image-container">
+    <div class="title">
+      <h1><span class="special-letter">A</span>xis</h1>
+    </div>
+  </div>
+
+  <br>
+  <div class="image-container">
+  <h3>Eixo Cardíaco</h3>
+  </div>
+  
+  <div class="image-container">
+        <center>
+  <h4>Basta contar o nº de quadradinhos da amplitude onda R e subtrair a esse valor (positivo ou negativo) o nº de quadradinhos da amplitude da onda S</h4>
+    </center>
+  </div>
+  <br>
+  <div class="image-container">
+    <label for="leadI">Derivação I:</label><br>
+  </div>  
+    <div class="image-container">
+    <input type="number" id="leadI" name="leadI" style="font-size: 20px; padding: 10px 10px;"><br><br>
+  </div>
+<br>
+  <div class="image-container">
+    <label for="leadAVF">Derivação aVF</label><br>
+    </div>
+    <div class="image-container">
+    <input type="number" id="leadAVF" name="leadAVF" style="font-size: 20px; padding: 10px 10px;"><br><br>
+  </div>
+<br>
+  <div class="image-container">
+    <button onclick="calculateCardiacAxis()" style="font-size: 20px; padding: 15px 30px;">Calcular</button>
+  </div>
+  <div class="image-container">
+    <h3 id="result"></h3>
+  </div>
+  <br>
+  
+  <div class="image-container">
+  <canvas id="axisCanvas" width="400" height="400"></canvas>
+  </div>
+  
+ <div class="image-container">
+    <div class="title">
+      <h1><span class="special-letter">H</span>ypertrophy</h1>
+    </div>
+  </div>
+<br>
+  <div class="image-container">
+  <h3>Hipertrofia do miocárdio</h3>
+  </div>
+
+
+ <div class="image-container">
+  <h4>Dilatação auricular</h4>
+  </div>
+  </div>
+ <div class="image-container">
+    <table>
+  <tr>
+  </tr>
+  <tr>
+    <td>Anomalia da aurícula →R</td>
+    <td>Amplitude onda P >=2,5 mm II, III ou avF. Também associado: amplitude da onda P em V1 >1.5mm</td>
+  </tr>
+  <tr>
+    <td>Anomalia da aurícula L←</td>
+    <td>Onda P entalhada e >0,12s em I, II, aVF ou aVL e onda P em VI com componente negativo dominante.</td>
+  </tr>
+        <tr>
+    <td>Dilatação biauricular</td>
+    <td>Amplitude da onda P em DII >3mm e >120ms e em VI larga, bifásica, com componente 
+positiva >2mm e componente negativa > 1 mm e >40ms </td>
+  </tr>
+</table>
+  </div>
+
+<br>
+
+<div class="image-container">
+  <h4>Dilatação ventricular</h4>
+  </div>
+  </div>
+ <div class="image-container">
+    <table>
+  <tr>
+  </tr>
+  <tr>
+    <td>Hipertrofia ventricular →R</td>
+    <td>Ao contrário da hipertrofia ventricular esquerda, não existem critérios formais de diagnöstico de hipertrofia do ventriculo direito.<br>Mesmo assim, ver: Amplitude aumentada da onda R em V1, ou V2; Desenvolvimento BCRD com grande amplitude em R' ou R entalhada em V1; Desvio direito do eixo elétrico; Critérios para dilatação auricular direita; Alterações da repolarização tipo sobrecarga em V11 ou V2.
+</td>
+  </tr>
+  <tr>
+    <td>Hipertrofia ventricular L←</td>
+    <td>Critérios de Sokolow-Lyon: Soma da amplitude da onda R mais alta em V5 ou V6 com a amplitude da onda S em V1 > 35mm (se >53 anos) | > 53mm (se <=53 anos).<br>Reforça diagnóstico se tiver padrão de sobrecarga ventricular esquerda: infradesnivelamento do segmento ST com inda T invertida em V6.</td>
+  </tr>
+</table>
+  </div>
+
+
+<div class="image-container">
+    <div class="title">
+      <h1><span class="special-letter">I</span>NFARCT</h1>
+    </div>
+  </div>
+
+<br>
+  <div class="image-container">
+  <h3>Enfarte do miocárdio</h3>
+  </div>
+  
+  <table>
+  <tr>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>A que horas começou a dor?</td>
+    <td>Note-se que a dor já é depois de alterações eletrocardiográficas, já é algo "tardia" e começa muito subtil.</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>É a primeira vez que tem dor no peito?</td>
+    <td>Antecedentes de doença coronária.</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>Factores de risco cardiovascular</td>
+    <td>Ex: HTA, DM, dislipidémia, tabagismo, intervenções cirúrgicas, história familiar, etc.</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>Quais são os medicamentos que está a tomar?</td>
+    <td>Ex: Viagra (porque assim já tem vasodilatador).</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>Alguma vez teve alergia a algum medicamento?</td>
+    <td>Ex: É comum alergia ao contraste.</td>
+  </tr>
+</table>
+<br>
+  
+  <br>
+<div class="image-container">
+  <table id="newTable">
+    <tr>
+      <th>Alteração</th>
+      <th>Elevação ST</th>
+      <th>Depressão ST*</th>
+      <th>Redução da onda R</th>
+      <th>Inversão da onda T</th>       
+      <th>Onda Q patológica</th>   
+    </tr>
+    <tr>
+      <th>Descrição</th>      
+      <th>Segmento ST acima do normal <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://gcdnb.pbrd.co/images/tedTRYrAZ6Of.png"></i><br>Quando inclui a onda T, chama-se onda de Pardy.<br>Verificar se não é explicada simplesmente por alterações recíprocas de elevação de ST do outro lado.<br>Verificar se está presente em ≥2 derivações que avaliem a mesma região do coração e se amplitude >1mm nas derivações dos membros e >2mm nas derivações precordiais.</th>
+      <th>Segmento ST abaixo do normal <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://gcdnb.pbrd.co/images/0kTtUCB6EI91.png"></i></th>
+      <th>Diminuição abrupta na progressão da amplitude <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://ecgwaves.com/wp-content/uploads/2016/09/ecg-r-wave-progression-normal-chest-leads-v1-v6.jpg"></i></th>      
+      <th>Para baixo, em vez de para cima e simétrica, em vez de assimétrica <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://gcdnb.pbrd.co/images/YP52LLjGo8JT.png"></i><br>Também pode ser bifásica (metade positiva e metade negativa), planar, etc.<br>Numa fase muito precoce podem ser hiperagudas (grande amplitude).</th>
+      <th>><span class="special-letter">40</span>ms (1 quadradinho) ou amplitude >1/4 da respetiva onda R <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://img.stevegallik.org/what_lead_do_i_check_for_pathologic_q_waves.PNG"></i></th>   
+    </tr>
+    <tr>
+      <th>Corrente de</th>       
+      <th>Lesão</th>
+      <th>Isquémia</th>
+      <th>Isquémia</th>
+      <th>Isquémia</th>      
+       <th>Necrose</th>      
+    </tr>
+     <tr>
+      <th>Fase</th>           
+      <th>Precoce <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
+      <th>Precoce <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
+      <th>Precoce <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
+      <th>Precoce <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
+       <th>Tardia <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
+    </tr>
+    <tr>
+      <th>Derivação \ Alteração recíproca</th> 
+      <th>*Depressão de ST</th>
+      <th>-</th>
+      <th>-</th>
+      <th>-</th>     
+       <th>Aumento desproporcionado da amplitude da onda R</th>
+    </tr>
+  </table>
+</div>
+
+<br>
+ <div class="image-container">
+  <h3>Localização</h3>
+  </div>
+
+ <div class="image-container">
+<div class="sketchfab-embed-wrapper"> <iframe title="Elétrodos no coração" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share width="500" height="350" src="https://sketchfab.com/models/beb79750243841b8be64e2f59b4f64d0/embed?autostart=1&annotations_visible=0"> </iframe> </div>
+</div>
+<br>
+ <div class="image-container">
+<div class="sketchfab-embed-wrapper"> <iframe title="Artérias do coração" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share width="500" height="350" src="https://sketchfab.com/3d-models/coronary-arteries-blood-supply-to-ventricles-60e1da3fbef542c6bcf61cdac312ce4f/embed?autostart=1&annotations_visible=0"> </iframe> </div>
+</div>
+
+<br>
+<div class="image-container">
+<img src="https://i.postimg.cc/rpSNZngD/art-rias-do-cora-o-e-ecg.png" alt="Art Rias do Coração e ECG">
+  </div>
+
+<br>
+ <div class="image-container">
+  <h3>Rede arterial</h3>
+  </div>
+<br>
+
+
+  <div class="image-container">
+      <span>Dinâmica Física</span>&nbsp;&nbsp;
+      <label class="toggle-switch-label">
+    <input type="checkbox" class="physics-toggle" id="physicsCheck" checked onchange="togglePhysics()">
+    <span class="toggle-switch-slider"></span>
+</label>&nbsp;&nbsp;
+  </div>
+
+
+<center>
+  <br>
+ <button id="toggleFullscreen" style="font-size: 20px; padding: 15px 30px;">Ecrã inteiro</button>
+  <br /><br />
+  <div id="mynetwork"></div>
+    
+  <a href="https://github.com/andrefrsilva/sheets2network/raw/main/_B_joint.xlsx" target="_blank" style="display: none;">Bones and Joints Excel</a> <br><br>  
+  <input accept=".xlsx, .xls" capture="" id="inputExcel" type="file" onclick="showAlert()" style="display: none;"/>
+</center>
+
+
+<br>
+<br>
+<center>
+    <span>André FR Silva (2023) — De Lisboa, com ❤️</span>
+</center>
+<br>
+  
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/@sgratzl/chartjs-chart-boxplot@3"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.0.2/chartjs-plugin-annotation.min.js"></script>
+
+<script>
+  
+  
+  document.getElementById('upload').addEventListener('change', function(e) {
+    let file = e.target.files[0];
+    let reader = new FileReader();
+
+    reader.onloadend = function() {
+        document.getElementById('ecg').src = reader.result;
+        document.getElementById('ecg2').src = reader.result;
+    }
+
+    if (file) {
+        reader.readAsDataURL(file);
+    }
+});
+
+  
+    // Duration of the ECG in seconds
+    const duration = 10;
+
+    // Array to store the click times
+    let clicks = [];
+
+    // Array to store the heart rates
+    let heartRates = [];
+
+    // Create a box plot using Chart.js
+    let boxPlot = new Chart(document.getElementById('boxPlot'), {
+        type: 'boxplot',
+        data: {
+            labels: [''],
+            datasets: [{
+                label: 'FC',
+                data: [heartRates],
+                backgroundColor: 'rgba(0, 0, 0, .5)',
+                borderColor: 'rgba(0, 0, 0, 1)',
+                borderWidth: 1
+            }]
+        },
+       options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: false
+            }
+        },
+        plugins: {
+            annotation: {
+                 annotations: [
+                    {
+                        type: 'box',
+                        yMin: 0,
+                        yMax: 60,
+                        backgroundColor: 'rgba(173, 216, 230, 0.3)', // light blue
+                      borderWidth: 0
+                    },
+                    {
+                        type: 'box',
+                        yMin: 60,
+                        yMax: 100,
+                        backgroundColor: 'rgba(144, 238, 144, 0.3)', // light green
+                      borderWidth: 0
+                    },
+                    {
+                        type: 'box',
+                        yMin: 100,
+                        yMax: 150,
+                        backgroundColor: 'rgba(255, 165, 0, 0.5)', // orange
+                      borderWidth: 0
+                    },
+                    {
+                        type: 'box',
+                        yMin: 150,
+                        yMax: Infinity,
+                        backgroundColor: 'rgba(255, 0, 0, 0.3)', // red
+                      borderWidth: 0
+                    }
+                ]
+            }
+        }
+    }
+    });
+
+    // Create the scatter plot
+  let scatterPlot = new Chart(document.getElementById('scatterPlot'), {
+  type: 'line',
+  data: {
+    datasets: [{
+      label: 'FC',
+      data: heartRates.map((hr, index) => ({ x: index, y: hr })),
+      fill: false,
+      backgroundColor: 'rgba(0, 0, 0, .5)',
+      borderColor: 'rgba(0, 0, 0, 1)',
+      tension: 0.1,
+      showLine: true
+    }]
+  },
+    
+  options: {
+        responsive: true,
+        scales: {
+            x: {
+                type: 'linear',
+                display: true,
+                title: {
+                    display: true,
+                    text: ''
+                }
+            },          
+            y: {
+                beginAtZero: false,
+                title: {
+                    display: true,
+                    text: 'BPM'
+                }
+            }
+        },
+        plugins: {
+            annotation: {
+                annotations: [
+                    {
+                        type: 'box',
+                        yMin: 0,
+                        yMax: 60,
+                        backgroundColor: 'rgba(173, 216, 230, 0.3)', // light blue
+                      borderWidth: 0
+                    },
+                    {
+                        type: 'box',
+                        yMin: 60,
+                        yMax: 100,
+                        backgroundColor: 'rgba(144, 238, 144, 0.3)', // light green
+                      borderWidth: 0
+                    },
+                  {
+                        type: 'box',
+                        yMin: 100,
+                        yMax: 150,
+                        backgroundColor: 'rgba(255, 165, 0, 0.5)', // orange
+                      borderWidth: 0
+                    },
+                    {
+                        type: 'box',
+                        yMin: 150,
+                        yMax: Infinity,
+                        backgroundColor: 'rgba(255, 0, 0, 0.3)', // red
+                      borderWidth: 0
+                    }
+                ]
+            }
+        }
+    }
+});
+
+  let currentAverageHeartRate = 0;
+
+    // Add click event to the image
+    document.getElementById('ecg').addEventListener('click', function(event) {
+        // Calculate the click position as a percentage of the total image width
+        const clickPosition = event.clientX / this.offsetWidth;
+
+        // Calculate the time of the click
+        const clickTime = clickPosition * duration;
+
+        // Add the click time to the array
+        clicks.push(clickTime);
+
+        // Sort the click times in ascending order
+        clicks.sort((a, b) => a - b);
+
+        // Calculate the intervals between clicks
+        let intervals = [];
+        for (let i = 1; i < clicks.length; i++) {
+            intervals.push(clicks[i] - clicks[i - 1]);
+        }
+
+        // Calculate the heart rates from the intervals
+        heartRates = intervals.map(interval => 60 / interval);
+
+        // Display the intervals
+        document.getElementById('intervals').textContent = heartRates.join(', ');
+
+        // Calculate min and max heart rate
+        const minHeartRate = Math.min(...heartRates);
+        const maxHeartRate = Math.max(...heartRates);
+
+        // Update y scale
+        boxPlot.options.scales.y.min = minHeartRate;
+        boxPlot.options.scales.y.max = maxHeartRate;
+
+        // Update the box plot
+        boxPlot.data.datasets[0].data = [heartRates];
+        boxPlot.update();
+      
+     // Create the marker
+var marker = document.createElement('div');
+marker.classList.add('marker');
+
+// Calculate the marker position
+var markerPosition = clickPosition * this.offsetWidth;
+
+// Adjust the marker position
+const adjustment = 2;  // Adjust this value to move the dot to the left/right
+markerPosition -= adjustment;
+
+// Set the marker position
+marker.style.left = markerPosition + 'px';
+
+// Add the marker to the container
+document.getElementById('markers-container').appendChild(marker);
+      
+// Calculate the average heart rate
+let sumHeartRates = heartRates.reduce((a, b) => a + b, 0);
+let averageHeartRate = Math.round(sumHeartRates / heartRates.length);
+      
+// Assign the value to the global variable
+currentAverageHeartRate = averageHeartRate;
+      
+// Get the td element
+let tdElement = document.getElementById('average-rate');
+            
+ // Update the average heart rate in the table
+tdElement.textContent = averageHeartRate.toFixed(0);
+      
+      // Depending on the value of the average heart rate, color the background
+if (averageHeartRate < 60) {
+    tdElement.style.backgroundColor = '#89CFF0';
+} else if (averageHeartRate >= 60 && averageHeartRate < 100) {
+    tdElement.style.backgroundColor = '#AAFF00';
+} else if (averageHeartRate >= 100 && averageHeartRate < 150) {
+    tdElement.style.backgroundColor = 'orange';
+} else {
+    tdElement.style.backgroundColor = 'red';
+}
+      
+// Update the scatter plot
+scatterPlot.data.datasets[0].data = heartRates.map((hr, index) => ({ x: index, y: hr }));
+scatterPlot.update();
+      
+    });
+  
+  // Pasting from clipboard
+document.addEventListener('paste', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") === 0) {
+        handleFile(items[i].getAsFile());
+        break;
+      }
+    }
+}, false);
+
+  // File handling
+function handleFile(file) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      document.getElementById('ecg').src = reader.result;
+      document.getElementById('ecg2').src = reader.result;
+    }
+    reader.readAsDataURL(file);
+}
+  
+ const dropZone = document.querySelector('.drop-zone');
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('dragover');
+  });
+
+ // Drag and drop
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      let reader = new FileReader();
+      reader.onloadend = function() {
+        document.getElementById('ecg').src = reader.result;
+        document.getElementById('ecg2').src = reader.result; // add this line
+      }
+      reader.readAsDataURL(file);
+    }R
+});
+
+// Array to store the click times for the second image
+let clicks2 = [];
+
+// Array to store the heart rates for the second image
+let heartRates2 = [];
+
+// Add click event to the second image
+document.getElementById('ecg2').addEventListener('click', function(event) {
+    // Calculate the click position as a percentage of the total image width
+    const clickPosition = event.clientX / this.offsetWidth;
+
+    // Calculate the time of the click
+    const clickTime = clickPosition * duration;
+
+    // Add the click time to the array
+    clicks2.push(clickTime);
+
+    // Sort the click times in ascending order
+    clicks2.sort((a, b) => a - b);
+
+    // Calculate the intervals between clicks
+    let intervals = [];
+    for (let i = 1; i < clicks2.length; i += 2) {
+        intervals.push(clicks2[i] - clicks2[i - 1]);
+    }
+
+    // Calculate the heart rates from the intervals
+    heartRates2 = intervals.map(interval => 1000*interval);
+
+    // Display the intervals
+    document.getElementById('intervals').textContent = heartRates2.join(', ');
+
+    // Create the marker
+    var marker = document.createElement('div');
+    marker.classList.add('marker');
+
+    // Calculate the marker position
+    var markerPosition = clickPosition * this.offsetWidth;
+
+    // Adjust the marker position
+    const adjustment = 2;  // Adjust this value to move the dot to the left/right
+    markerPosition -= adjustment;
+
+    // Set the marker position
+    marker.style.left = markerPosition + 'px';
+
+    // Add the marker to the container
+    document.getElementById('markers-container2').appendChild(marker);
+
+    document.getElementById('ecg2').addEventListener('click', function(event) {
+    // ... existing code ...
+
+    // Update the box plot
+    boxPlot2.data.datasets[0].data = [heartRates2];
+    boxPlot2.update();
+
+    // Update the scatter plot
+    scatterPlot2.data.datasets[0].data = heartRates2.map((hr, index) => ({ x: index, y: hr }));
+    scatterPlot2.update();
+      
+      
+      
+      // Calculate PR
+let sumPR = heartRates2.reduce((a, b) => a + b, 0);
+let averagePR = Math.round(sumPR / heartRates2.length);
+      
+      // Get the td element
+let averagePRelement = document.getElementById('average-PR');
+            
+ // Update the average heart rate in the table
+averagePRelement.textContent = averagePR.toFixed(0);
+      
+      // Depending on the value of the average heart rate, color the background
+if (averagePR < 120) {
+    averagePRelement.style.backgroundColor = '#89CFF0';
+} else if (averagePR >= 120 && averagePR < 200) {
+    averagePRelement.style.backgroundColor = '#AAFF00';
+} else {
+    averagePRelement.style.backgroundColor = 'red';
+}
+      
+      
+});
+  
+});
+  
+
+// Create a box plot using Chart.js for the second image
+let boxPlot2 = new Chart(document.getElementById('boxPlot2'), {
+    type: 'boxplot',
+    data: {
+        labels: [''],
+        datasets: [{
+            label: 'Intervalo PR',
+            data: [heartRates2],
+            backgroundColor: 'rgba(0, 0, 0, .5)',
+            borderColor: 'rgba(0, 0, 0, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: false
+            }
+        },
+        plugins: {
+            annotation: {
+                 annotations: [
+                    {
+                        type: 'box',
+                        yMin: 0,
+                        yMax: 120,
+                        backgroundColor: 'rgba(173, 216, 230, 0.3)', // light blue
+                      borderWidth: 0
+                    },
+                    {
+                        type: 'box',
+                        yMin: 120,
+                        yMax: 200,
+                        backgroundColor: 'rgba(144, 238, 144, 0.3)', // light green
+                      borderWidth: 0
+                    },
+                    {
+                        type: 'box',
+                        yMin: 200,
+                        yMax: Infinity,
+                        backgroundColor: 'rgba(255, 0, 0, 0.3)', // red
+                      borderWidth: 0
+                    }
+                ]
+            }
+        }
+    }
+});
+
+// Create the scatter plot for the second image
+let scatterPlot2 = new Chart(document.getElementById('scatterPlot2'), {
+    type: 'line',
+    data: {
+        datasets: [{
+            label: 'Intervalo PR',
+            data: heartRates2.map((hr, index) => ({ x: index, y: hr })),
+            fill: false,
+            backgroundColor: 'rgba(0, 0, 0, .5)',
+            borderColor: 'rgba(0, 0, 0, 1)',
+            tension: 0.1,
+            showLine: true
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            x: {
+                type: 'linear',
+                display: true,
+                title: {
+                    display: true,
+                    text: ''
+                }
+            },
+            y: {
+                beginAtZero: false,
+                title: {
+                    display: true,
+                    text: 'ms'
+                }
+            }
+        },
+        plugins: {
+            annotation: {
+                annotations: [
+                    {
+                        type: 'box',
+                        yMin: 0,
+                        yMax: 120,
+                        backgroundColor: 'rgba(173, 216, 230, 0.3)', // light blue
+                      borderWidth: 0
+                    },
+                    {
+                        type: 'box',
+                        yMin: 120,
+                        yMax: 200,
+                        backgroundColor: 'rgba(144, 238, 144, 0.3)', // light green
+                      borderWidth: 0
+                    },
+                    {
+                        type: 'box',
+                        yMin: 200,
+                        yMax: Infinity,
+                        backgroundColor: 'rgba(255, 0, 0, 0.3)', // red
+                      borderWidth: 0
+                    }
+                ]
+            }
+        }
+    }
+});
+
+  
+  // Get a reference to the table
+  const table = document.getElementById('newTable');
+
+  // Define the text for each row
+ const rowTexts = [
+  'I',
+  'II',
+  'III',
+  'aVF',
+  'aVR',
+  'aVL',
+  'V1',
+  'V2',
+  'V3',
+  'V4',
+  'V5',
+  'V6'
+];
+
+  // Loop through the texts and create a row for each one
+  for (let text of rowTexts) {
+    const row = document.createElement('tr');
+    const tdText = document.createElement('td');
+    tdText.textContent = text;
+    row.appendChild(tdText);
+
+    // Add 4 columns with checkboxes
+    for (let i = 0; i < 5; i++) {
+      const tdToggle = document.createElement('td');
+      const label = document.createElement('label');
+      label.className = 'toggle-switch-label';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      const span = document.createElement('span');
+      span.className = 'toggle-switch-slider';
+      
+      label.appendChild(input);
+      label.appendChild(span);
+      tdToggle.appendChild(label);
+      row.appendChild(tdToggle);
+    }
+
+    table.appendChild(row);
+  }
+  
+function calculateCardiacAxis() {
+    let leadI = parseFloat(document.getElementById('leadI').value);
+    let leadAVF = parseFloat(document.getElementById('leadAVF').value);
+
+    // atan2() takes into account the quadrant of the point in the Cartesian plane
+    let cardiacAxis = Math.atan2(leadI, leadAVF) * (180 / Math.PI);
+
+    // convert the range from [-180, 180] to [0, 360]
+    if (cardiacAxis < 0) {
+        cardiacAxis = 360 + cardiacAxis;
+    }
+
+    // as the coordinate system in canvas starts at the top left corner and is inverted on the y-axis,
+    // we need to invert our angle and also adjust it to start from the topmost point (which is normally at 90° in trigonometry)
+    cardiacAxis = (360 - (cardiacAxis - 90)) % 360;
+  
+    // Check if the axis is within normal range, if yes then color it green, else color it red
+let color;
+if (cardiacAxis >= -30 && cardiacAxis <= 90) {
+  color = 'green';
+} else if (cardiacAxis > 90 && cardiacAxis <= 100) {
+  color = 'orange';
+} else {
+  color = 'red';
+}
+document.getElementById('result').style.color = color;
+    
+    document.getElementById('result').innerHTML = cardiacAxis.toFixed(0) + "°" + "(" + -(360-cardiacAxis.toFixed(0)) + "°"  +")";
+
+    // Draw the axis on the circle
+    drawCardiacAxis(cardiacAxis);
+}
+
+function drawCardiacAxis(cardiacAxis) {
+    let canvas = document.getElementById('axisCanvas');
+    let ctx = canvas.getContext('2d');
+    let radius = 150;
+    let center = {x: 200, y: 200}; // center of the canvas
+
+    // Clear the canvas for fresh drawing
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw the circle
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
+    ctx.stroke();
+
+    // Draw the tick mark for normal range
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, degreeToRadians(-30), degreeToRadians(90));
+    ctx.strokeStyle = "green";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    // Draw the cardiac axis
+    let cardiacAngle = degreeToRadians(cardiacAxis); // subtract 90 to make 0 degrees start at the right
+    ctx.beginPath();
+    ctx.moveTo(center.x, center.y);
+    ctx.lineTo(center.x + radius * Math.cos(cardiacAngle), center.y + radius * Math.sin(cardiacAngle));
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+   // Adding the degree labels
+ctx.font = '18px Arial';
+ctx.fillStyle = 'black';
+ctx.fillText('-30°', center.x + radius * Math.cos(degreeToRadians(-30 - 90 + 90)), center.y + radius * Math.sin(degreeToRadians(-30 - 90 + 90)));
+ctx.fillText('100°', center.x + radius * Math.cos(degreeToRadians(100 - 90 + 90)), center.y -10 + radius * Math.sin(degreeToRadians(100 - 90 + 90)));
+}
+
+function degreeToRadians(deg) {
+    return deg * (Math.PI / 180);
+}
+
+// Call calculateCardiacAxis whenever the input values change
+document.getElementById('leadI').addEventListener('change', calculateCardiacAxis);
+document.getElementById('leadAVF').addEventListener('change', calculateCardiacAxis);
+
+document.getElementById('recordTimeButton').addEventListener('click', function() {
+    const clickTime = new Date().getTime() / 1000; // Get the current time in seconds
+
+    // Add the click time to the array
+    clicks.push(clickTime);
+
+    // Sort the click times in ascending order
+    clicks.sort((a, b) => a - b);
+
+    // Calculate the intervals between clicks
+    let intervals = [];
+    for (let i = 1; i < clicks.length; i++) {
+        intervals.push(clicks[i] - clicks[i - 1]);
+    }
+
+    // Calculate the heart rates from the intervals
+    let heartRates = intervals.map(interval => 60 / interval);
+
+    // Display the intervals
+    document.getElementById('intervals').textContent = heartRates.join(', ');
+
+    // Calculate min and max heart rate
+    const minHeartRate = Math.min(...heartRates);
+    const maxHeartRate = Math.max(...heartRates);
+
+    // Update y scale
+    boxPlot.options.scales.y.min = minHeartRate;
+    boxPlot.options.scales.y.max = maxHeartRate;
+
+    // Update the box plot
+    boxPlot.data.datasets[0].data = [heartRates];
+    boxPlot.update();
+
+    // Calculate the average heart rate
+    let sumHeartRates = heartRates.reduce((a, b) => a + b, 0);
+    let averageHeartRate = Math.round(sumHeartRates / heartRates.length);
+
+    // Get the td element
+    let tdElement = document.getElementById('average-rate');
+
+    // Update the average heart rate in the table
+    tdElement.textContent = averageHeartRate.toFixed(0);
+
+    // Depending on the value of the average heart rate, color the background
+    if (averageHeartRate < 60) {
+        tdElement.style.backgroundColor = '#89CFF0';
+    } else if (averageHeartRate >= 60 && averageHeartRate < 100) {
+        tdElement.style.backgroundColor = '#AAFF00';
+    } else if (averageHeartRate >= 100 && averageHeartRate < 150) {
+        tdElement.style.backgroundColor = 'orange';
+    } else {
+        tdElement.style.backgroundColor = 'red';
+    }
+
+    // Update the scatter plot
+    scatterPlot.data.datasets[0].data = heartRates.map((hr, index) => ({ x: index, y: hr }));
+    scatterPlot.update();
+});
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  // Assign event listeners to the icons
+document.querySelectorAll('.tooltip-icon').forEach(icon => {
+    icon.addEventListener('click', function(event) {
+        event.stopPropagation(); // Prevent the event from bubbling up to the document
+        const imageUrl = this.getAttribute('data-tooltip');
+        showTooltip(imageUrl);
+    });
+});
+
+// Assign a click event to the entire document
+document.addEventListener('click', function() {
+    hideTooltip();
+});
+
+function showTooltip(imageUrl) {
+    let tooltip = document.querySelector('.tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.classList.add('tooltip');
+        document.body.appendChild(tooltip);
+    }
+    tooltip.innerHTML = `<img src="${imageUrl}" alt="Tooltip Image">`;
+    tooltip.style.display = 'block';
+}
+
+function hideTooltip() {
+    const tooltip = document.querySelector('.tooltip');
+    if (tooltip) {
+        tooltip.style.display = 'none';
+    }
+}
+
+// Get all special letter elements
+    var specialLetters = document.getElementsByTagName('special');
+
+    // Add the special-letter class to each special letter element
+    for (var i = 0; i < specialLetters.length; i++) {
+      specialLetters[i].classList.add('special-letter');
+    }
+  
+  document.addEventListener('DOMContentLoaded', function () {
+  var heartRateElement = document.getElementById("average-rate");
+  var toggleInputs = document.querySelectorAll('input.cardiac-toggle'); // selecione apenas os toggles com a classe 'cardiac-toggle'
+  var resultDiv = document.getElementById("resultrhythm");
+  var analyzeButton = document.getElementById("analyzeButton");
+
+  function updateAnalysis() {
+    //console log to debug
+        var heartRateText = heartRateElement.textContent.trim();
+    console.log("Heart rate text:", heartRateText);
+    
+    var heartRate = parseInt(heartRateElement.textContent.trim(), 10);
+    console.log("Parsed heart rate:", heartRate);
+    
+    var allTogglesOn = Array.from(toggleInputs).every(input => input.checked);
+    console.log("All toggles on:", allTogglesOn);
+    
+    var anyToggleOff = Array.from(toggleInputs).some(input => !input.checked);
+    console.log("Any toggle off:", anyToggleOff);
+    
+    var heartRate = parseInt(heartRateElement.textContent.trim(), 10);
+    var allTogglesOn = Array.from(toggleInputs).every(input => input.checked);
+    var anyToggleOff = Array.from(toggleInputs).some(input => !input.checked);
+
+    if (isNaN(heartRate)) {
+      resultDiv.innerText = "Ainda não temos uma frequência cardíaca válida.";
+      resultDiv.style.color = "black";
+      return;
+    }
+
+    if (heartRate > 60 && heartRate < 150 && allTogglesOn) {
+      resultDiv.innerText = "Ritmo sinusal";
+      resultDiv.style.color = "green";
+    } else if (heartRate >= 150 && allTogglesOn) {
+      resultDiv.innerText = "Taquicardia sinusal";
+      resultDiv.style.color = "orange";
+    } else if (heartRate <= 60 && allTogglesOn) {
+      resultDiv.innerText = "Bradicardia sinusal";
+      resultDiv.style.color = "orange";
+    } else if (heartRate >= 150 && anyToggleOff) {
+      resultDiv.innerText = "Taquicardia não sinusal";
+      resultDiv.style.color = "red";
+    } else if (heartRate <= 60 && anyToggleOff) {
+      resultDiv.innerText = "Bradicardia não sinusal";
+      resultDiv.style.color = "red";
+    } else if (heartRate > 60 && heartRate < 150 && anyToggleOff) {
+      resultDiv.innerText = "Arritmia";
+      resultDiv.style.color = "red";
+    }
+  }
+
+  // Escuta o evento de clique no botão de análise
+  analyzeButton.addEventListener('click', updateAnalysis);
+});
+
+let context;
+let oscillator;
+let gainNode;
+let isPlaying = false;
+let heartRateIndex = 0;
+
+function startBeeping() {
+    if (isPlaying) return;
+
+    if (heartRates.length === 0) {
+        alert("Ainda não temos a frequência cardíaca");
+        return;
+    }
+    
+    isPlaying = true;
+
+    // Initialize audio context
+    if (!context) {
+        context = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    // Start playing the sequence
+    playNextBeep();
+}
+
+function playNextBeep() {
+    if (!isPlaying) return; // Stop if the isPlaying flag is set to false
+    
+    const averageRate = heartRates[heartRateIndex];
+    const interval = (60 / averageRate) * 1000;
+
+    // Schedule the next beep
+    setTimeout(() => {
+        playBeep();
+        heartRateIndex = (heartRateIndex + 1) % heartRates.length; // Move to the next heart rate, wrap to the beginning if at the end
+        playNextBeep();
+    }, interval);
+}
+
+function playBeep() {
+    if (useHeartbeatSound && heartbeatAudioBuffer) {
+        // Play heartbeat sound
+        const source = context.createBufferSource();
+        source.buffer = heartbeatAudioBuffer;
+        source.connect(context.destination);
+        source.start();
+    } else {
+        // Play beep sound (existing code)
+        oscillator = context.createOscillator();
+        gainNode = context.createGain();
+
+        oscillator.frequency.setValueAtTime(544, context.currentTime); // 544Hz
+        oscillator.type = 'sine';
+
+        // Set initial gain to 0 so we can fade in
+        gainNode.gain.setValueAtTime(0, context.currentTime);
+
+        // Fade in
+        gainNode.gain.linearRampToValueAtTime(0.5, context.currentTime + 0.01); // 50% volume
+
+        // Fade out
+        gainNode.gain.linearRampToValueAtTime(0, context.currentTime + 0.09); // back to 0
+
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+
+        oscillator.start();
+        oscillator.stop(context.currentTime + 0.1); // Play the beep for 0.1 second
+    }
+}
+
+function stopBeeping() {
+    isPlaying = false;
+}
+
+  let useHeartbeatSound = false; // Variable to keep track of the current sound selection
+let heartbeatAudioBuffer; // To store the heartbeat sound buffer
+
+// Function to toggle between beep and heartbeat sound
+function toggleSound() {
+    const toggleButton = document.getElementById("soundToggle");
+    useHeartbeatSound = toggleButton.checked;
+    
+    // Load the heartbeat sound if it's selected
+    if (useHeartbeatSound && !heartbeatAudioBuffer) {
+        loadHeartbeatSound();
+    }
+}
+
+
+// Function to load the heartbeat sound
+function loadHeartbeatSound() {
+    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+    const targetUrl = 'https://github.com/andrefrsilva/sheets2network/raw/main/Heartbeat_01.wav';
+    fetch(proxyUrl + targetUrl)
+        .then(response => response.arrayBuffer())
+        .then(arrayBuffer => context.decodeAudioData(arrayBuffer))
+        .then(audioBuffer => {
+            heartbeatAudioBuffer = audioBuffer;
+        });
+}
+
+  
+   // Define nodes and edges outside of DOMContentLoaded
+var nodes = null;
+var edges = null;
+    
+   document.addEventListener("DOMContentLoaded", function() {
+  nodes = new vis.DataSet([]);
+  edges = new vis.DataSet([]);
+          
+  var c_vein = "lightblue";
+  var c_artery = "red";
+  var c_other2 = "grey";
+     var c_organ = "orange";
+  
+ 
+  let physics_var = false;
+  
+  var c_positive = "green";
+  var c_negative = "red";
+  var c_other3 = "grey";
+
+  var nvalue50 = 100;
+  var nvalue40 = 40;
+  var nvalue30 = 25;
+  var nvalue20 = 20;
+  var nvalue10 = 10;
+  var nvalue5 = 5;
+  var nvalue2 = 4;
+
+  var evalue50 = 150;
+  var evalue40 = 40;
+  var evalue30 = 30;
+  var evalue20 = 20;
+  var evalue10 = 10;
+  var evalue5 = 2;
+  var evalue2 = 1;
+  
+var nodes = new vis.DataSet([
+  
+    // organs, tissues, etc. 44_5
+  { id: 44_5_1, label: "(pulmões)", font: { size: nvalue20 }, value: nvalue50, color: c_organ},
+  
+   { id: 74_1, label: "(septo\ninterventricular)", font: { size: nvalue10 }, value: nvalue10, color: c_organ, fixed: true, x: -25, y: 50},
+   { id: 74_2, label: "(septo\nauriculoventricular)", font: { size: nvalue10 }, value: nvalue10, color: c_organ, fixed: true, x: -25, y: -25},
+    
+  { id: 72_1, label: "cava [S]", font: { size: nvalue20 }, value: nvalue20, color: c_vein},
+  { id: 72_2, label: "cava [I]", font: { size: nvalue20 }, value: nvalue20, color: c_vein},
+  
+  { id: 72_3, label: "tronco pulmonar", font: { size: nvalue20 }, value: nvalue20, color: c_vein},
+  { id: 72_4, label: "(4) _Vs pulmonares", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
+  
+  { id: 71_1, label: "ventrículo L", font: { size: nvalue20 }, value: nvalue50, color: 'brown', fixed: true, x: 50, y: 50},
+  { id: 71_2, label: "ventrículo R", font: { size: nvalue20 }, value: nvalue50, color: 'brown', fixed: true, x: -100, y: 50},
+  { id: 71_3, label: "aurícula L", font: { size: nvalue20 }, value: nvalue40, color: 'brown', fixed: true, x: 50, y: -100},
+  { id: 71_4, label: "aurícula R", font: { size: nvalue20 }, value: nvalue40, color: 'brown', fixed: true, x: -100, y: -100},
+    
+  { id: 70_0, label: "aorta", font: { size: nvalue40 }, value: nvalue40, color: c_artery},
+  { id: 70_0_1, label: "coronária R", font: { size: nvalue10 }, value: nvalue10, color: c_artery},
+  { id: 70_0_1_1, label: "marginal R", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
+  { id: 70_0_1_4, label: "ramo do nódulo\natrioventricular", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
+  { id: 70_0_1_2, label: "descendente [P]\ninterventricular/PDA", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
+  { id: 70_0_2, label: "coronária L", font: { size: nvalue10 }, value: nvalue10, color: c_artery},
+  { id: 70_0_2_1, label: "descendente [A]\ninterventricular/LAD", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
+  { id: 70_0_2_1_1, label: "diagonais (D1, D2, ...)", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
+  { id: 70_0_2_2, label: "circunflexa\natrioventricular/Cx", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
+  { id: 70_0_2_2_1, label: "marginais obtusas", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
+  
+  { id: 70_1, label: "crossa da aorta", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
+  
+  { id: 70_1_1, label: "subclávia L", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
+  { id: 70_1_2, label: "carótida comum L", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
+  { id: 70_1_3, label: "tronco braquicefálico", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
+  { id: 70_1_3_1, label: "tiroideia ima", font: { size: nvalue10 }, value: nvalue10, color: c_artery},
+  
+  { id: 70_1_4, label: "carótida comum R", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
+  { id: 70_1_4_1, label: "carótida externa", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
+  { id: 70_1_4_2_1, label: "(seio carotídeo - BP)", font: { size: nvalue20 }, value: nvalue20, color: c_other2},
+  { id: 70_1_4_2_2, label: "(corpo carotódeo - O2)", font: { size: nvalue20 }, value: nvalue20, color: c_other2},
+    
+]);
+
+var edges = new vis.DataSet([
+    { from: 72_3, to: 44_5_1, arrows: "to", value: evalue10, color: c_vein},
+  { from: 44_5_1, to: 72_4, arrows: "to", value: evalue10, color: c_vein},
+  
+  /*
+   { from: 74_1, to: 71_1, dashes: true, value: evalue2, color: 'brown',},
+   { from: 74_1, to: 71_2, dashes: true, value: evalue2, color: 'brown',},
+  { from: 74_2, to: 71_4, dashes: true, value: evalue2, color: 'brown',},
+   { from: 74_2, to: 71_1, dashes: true, value: evalue2, color: 'brown',},
+  */
+  
+   { from: 70_0_1_1, to: 71_2, arrows: "to", value: evalue5, color: c_artery},
+   { from: 70_0_1, to: 71_4, arrows: "to", value: evalue5, color: c_artery},
+   { from: 70_0_1_2, to: 74_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_1_4, to: 74_2, arrows: "to", value: evalue5, color: c_artery},
+   { from: 70_0_2_1, to: 74_1, arrows: "to", value: evalue5, color: c_artery},
+   { from: 70_0_2_1_1, to: 71_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_2_2_1, to: 71_1, arrows: "to", value: evalue5, color: c_artery},
+   { from: 70_0_2_2, to: 71_1, arrows: "to", value: evalue5, color: c_artery},
+   { from: 70_0_2_2, to: 71_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_0_2_2, to: 70_0_1_2, dashes: true, value: evalue2, color: 'red', label: '~10%'},
+  
+  
+  { from: 70_1_4, to: 70_1_4_1, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_4, to: 70_1_4_2_1, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_4_2_1, to: 70_1_4_2_2, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_4_2_1, to: 70_1_4_3, arrows: "to", value: evalue10, color: c_artery},
+  
+  { from: 72_4, to: 71_3, arrows: "to", value: evalue10, color: c_artery},
+  
+  { from: 71_2, to: 72_3, arrows: "to", value: evalue10, color: c_vein},
+  { from: 72_1, to: 71_4, arrows: "to", value: evalue10, color: c_vein},
+  { from: 72_2, to: 71_4, arrows: "to", value: evalue10, color: c_vein},
+  
+  { from: 71_3, to: 71_1, arrows: "to", value: evalue10, color: c_artery},
+  { from: 71_4, to: 71_2, arrows: "to", value: evalue10, color: c_artery},
+  
+  { from: 71_1, to: 70_0, arrows: "to", value: evalue40, color: c_artery},
+  
+  { from: 70_0, to: 70_1, arrows: "to", value: evalue40, color: c_artery},
+  { from: 70_1, to: 70_2, arrows: "to", value: evalue40, color: c_artery},
+  { from: 70_2, to: 70_3, arrows: "to", value: evalue40, color: c_artery},
+  { from: 70_3, to: 70_4, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_4, to: 70_5, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_4, to: 70_6, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_5, to: 70_7, arrows: "to", value: evalue10, color: c_artery},
+  
+  { from: 70_1_5, to: 70_1_5_1, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_5, to: 70_1_5_2, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_5, to: 70_1_5_3, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_5, to: 70_1_5_4, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_5, to: 70_1_5_5, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_5, to: 70_1_5_6, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_5_3, to: 70_1_5_7, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_5_3, to: 70_1_5_3_1, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1, to: 70_1_1, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1, to: 70_1_2, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1, to: 70_1_3, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_3, to: 70_1_4, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_3, to: 70_1_5, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_3, to: 70_1_3_1, arrows: "to", value: evalue10, color: c_artery},
+  
+  
+  { from: 70_7, to: 70_8, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_8, to: 70_9, arrows: "to", value: evalue10, color: c_artery},
+  
+  { from: 70_8, to: 70_8_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_8, to: 70_8_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_8, to: 70_8_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_8, to: 70_8_4, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_9, to: 70_9_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_9, to: 70_9_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_9, to: 70_9_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_9, to: 70_9_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_9, to: 70_9_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_9, to: 70_9_6, arrows: "to", value: evalue10, color: c_artery},
+  
+  { from: 70_9_6, to: 70_9_6_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_9_6, to: 70_9_6_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_9_6, to: 70_9_6_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_9_6, to: 70_9_6_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_9_6, to: 70_9_6_5, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_8, to: 70_10, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_10, to: 70_10_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10, to: 70_10_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10, to: 70_10_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_10_3, to: 70_10_3_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_3, to: 70_10_3_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_3, to: 70_10_3_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_3, to: 70_10_3_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_3, to: 70_10_3_5, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_10, to: 70_10_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_4, to: 70_10_4_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_4, to: 70_10_4_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_4, to: 70_10_4_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_4, to: 70_10_4_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_4, to: 70_10_4_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_4, to: 70_10_4_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_10_4, to: 70_10_4_7, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_6, to: 70_1_5_6_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_7, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_8, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_9, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_10, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6, to: 70_1_5_6_11, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_6_11, to: 70_1_5_6_11_1, arrows: "to", value: evalue5, color: c_artery},
+    
+  { from: 70_1_5_7, to: 70_1_5_7_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2, to: 70_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2, to: 70_2_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_2, to: 70_1_5_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_2, to: 70_1_5_2_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_2, to: 70_1_5_2_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_2_1, to: 70_1_5_2_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_2_1, to: 70_1_5_2_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_2_1, to: 70_1_5_2_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_2_1, to: 70_1_5_2_1_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_2_1, to: 70_1_5_2_1_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_2_1, to: 70_1_5_2_1_6, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_5, to: 70_1_5_5_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5, to: 70_1_5_5_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5, to: 70_1_5_5_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5, to: 70_1_5_5_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5, to: 70_1_5_5_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5, to: 70_1_5_5_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5, to: 70_1_5_5_7, arrows: "to", value: evalue10, color: c_artery},
+  
+  { from: 70_1_5_5_2, to: 70_1_5_5_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_2, to: 70_1_5_5_2_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_2, to: 70_1_5_5_2_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_2, to: 70_1_5_5_2_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_6, to: 70_1_5_5_6_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_6, to: 70_1_5_5_6_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  
+  { from: 70_1_5_5_7, to: 70_1_5_5_7_1, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_1_5_5_7_1, to: 70_1_5_5_7_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_1, to: 70_1_5_5_7_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_1, to: 70_1_5_5_7_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_1, to: 70_1_5_5_7_1_4, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_5_7, to: 70_1_5_5_7_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7, to: 70_1_5_5_7_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7, to: 70_1_5_5_7_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_1, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_5_7, to: 70_1_5_5_7_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5_3, to: 70_1_5_5_7_5_3_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5_3, to: 70_1_5_5_7_5_3_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5_3, to: 70_1_5_5_7_5_3_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_5_7_4_1, to: 70_1_5_5_7_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_1_3, to: 70_1_5_5_7_4_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5_1, to: 70_1_5_5_7_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_3, to: 70_1_5_5_7_5_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5_2, to: 70_1_5_5_7_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_2, to: 70_1_5_5_7_5_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  
+  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_7, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_5_7_4_2, to: 70_1_5_5_7_5_10_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5_4, to: 70_1_5_5_7_5_10_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_4_3, to: 70_1_5_5_7_5_10_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5_5, to: 70_1_5_5_7_5_10_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_5_7_4_4, to: 70_1_5_5_7_5_10_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5_6, to: 70_1_5_5_7_5_10_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_5_7_4_5, to: 70_1_5_5_7_5_10_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_5_7_5_7, to: 70_1_5_5_7_5_10_4, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_0, to: 70_0_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_1, to: 70_0_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_1, to: 70_0_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_1, to: 70_0_1_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0, to: 70_0_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_2, to: 70_0_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_2_1, to: 70_0_2_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_2, to: 70_0_2_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_2_2, to: 70_0_2_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_1_2, to: 70_0_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_0_2_1, to: 70_0_1_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_6_1, to: 70_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1, to: 70_1_5_6_1, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_5_7_1, to: 70_2_1, dashes: "true", value: evalue5, color: c_artery},
+  { from: 70_2_2, to: 70_2_1, dashes: "true", value: evalue5, color: c_artery},
+  
+  { from: 70_2_1, to: 70_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1, to: 70_2_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_1, to: 70_2_1_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_1, to: 70_2_1_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_1, to: 70_2_1_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_1, to: 70_2_1_1_4, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_2_1, to: 70_2_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_2, to: 70_2_1_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_2_1, to: 70_2_1_2_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_2_1, to: 70_2_1_2_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_2_1, to: 70_2_1_2_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_2, to: 70_2_1_2_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2_1_2, to: 70_2_1_2_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_2, to: 70_2_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2, to: 70_2_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2, to: 70_2_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2, to: 70_2_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_2, to: 70_2_7, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_1_3_3, to: 70_3_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_1, to: 70_3_1_3_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3, to: 70_3_1, arrows: "to", value: evalue10, color: c_artery},
+  { from: 70_3_1, to: 70_3_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1, to: 70_3_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1, to: 70_3_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_3, to: 70_3_1_3_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_3, to: 70_3_1_3_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_3, to: 70_3_1_3_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_3, to: 70_3_1_3_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_3, to: 70_3_1_3_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_3, to: 70_3_1_3_6, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3, to: 70_3_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3, to: 70_3_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_3, to: 70_3_3_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3, to: 70_3_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3, to: 70_3_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3, to: 70_3_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3, to: 70_3_7, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3, to: 70_3_8, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3, to: 70_3_9, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_9, to: 70_3_9_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_9_1, to: 70_3_9_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_9, to: 70_3_9_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_6_2_1, to: 70_6_7, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6_7, to: 70_6_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6_2, to: 70_3_8, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_8, to: 70_6_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_6, to: 70_6_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6, to: 70_6_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6_2, to: 70_6_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6, to: 70_6_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6, to: 70_6_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6, to: 70_6_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6, to: 70_6_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6_6, to: 70_6_6_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6_6_1, to: 70_6_6_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6, to: 70_6_7, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6_7, to: 70_6_7_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6, to: 70_6_8, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_6, to: 70_6_9, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_4, to: 70_3_4_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_4, to: 70_3_4_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_4, to: 70_3_4_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_4, to: 70_3_4_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_4, to: 70_3_4_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_6, to: 70_3_6_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_6, to: 70_3_6_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_6, to: 70_3_6_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_4_1, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_4_2, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_4_4, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_6_1, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_6_2, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_6_1_1, to: 70_3_4_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_6_1_1, to: 70_3_4_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_6_1_1, to: 70_3_4_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_6_1_1, to: 70_3_6_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_6_1_1, to: 70_3_6_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_5, to: 70_5_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_5, to: 70_5_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_7, to: 70_7_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7, to: 70_7_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7, to: 70_7_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7, to: 70_7_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7_4, to: 70_7_4_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7_4, to: 70_7_4_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7_4, to: 70_7_4_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7_4_3, to: 70_7_4_3_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7_4, to: 70_7_4_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7_4_4, to: 70_7_4_4_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_7, to: 70_7_5, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_1_2, to: 70_3_1_2_1, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_1_2_1, to: 70_3_1_2_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_1_1, to: 70_3_1_2_1_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_1, to: 70_3_1_2_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_1, to: 70_3_1_2_1_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_1_2, to: 70_3_1_2_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_2, to: 70_3_1_2_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_2, to: 70_3_1_2_2_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_2, to: 70_3_1_2_2_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_1_3_2, to: 70_3_1_2_2_0, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_4_5, to: 70_3_1_2_2_0, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_2_3, to: 70_3_1_2_2_0, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_2_0, to: 70_3_1_3_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_2_0, to: 70_3_4_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_2_0, to: 70_3_1_2_2_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_1_2_1_3, to: 70_3_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_1, to: 70_3_1_2_1_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_3_1_2_2_2, to: 70_3_1_2_2_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_2_2_2_1, to: 70_3_1_3_4, label: "Barkow", arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_3_1_3_4, to: 70_3_1_2_2_2_1, arrows: "to", value: evalue5, color: c_artery},
+  
+  
+  { from: 70_1_4_3, to: 70_1_4_3_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_1, to: 70_1_4_3_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_2, to: 70_1_4_3_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_2, to: 70_1_4_3_2_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_2, to: 70_1_4_3_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_3, to: 70_1_4_3_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4, to: 70_1_4_3_4_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_5, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_4_3_4, to: 70_1_4_3_4_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4, to: 70_1_4_3_4_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4_3, to: 70_1_4_3_4_3_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4_3, to: 70_1_4_3_4_3_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_4_3, to: 70_1_4_3_4_3_3, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_4_3_4, to: 70_1_4_3_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_5, to: 70_1_4_3_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6, to: 70_1_4_3_6_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_7, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_8, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_9, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_4_3_6, to: 70_1_4_3_6_2, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_4_3_6, to: 70_1_4_3_7, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_7, to: 70_1_4_3_7_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_7, to: 70_1_4_3_7_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_7, to: 70_1_4_3_7_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_7, to: 70_1_4_3_7_4, arrows: "to", value: evalue5, color: c_artery},
+  
+  
+  { from: 70_1_4_2_1_8_7, to: 70_1_4_3_6_1_9, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1_9, to: 70_1_4_2_1_8_7, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_8_7, to: 70_1_4_3_6_1_7, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_3_6_1_7, to: 70_1_4_2_1_8_7, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_4_1, to: 70_1_4_2_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_1, to: 70_1_4_2_1_1_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_1, to: 70_1_4_2_1_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_1, to: 70_1_4_2_1_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_1, to: 70_1_4_2_1_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_1, to: 70_1_4_2_1_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_6, label: "terminal", rrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_7, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_1, to: 70_1_4_2_1_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_7, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_8, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_1, to: 70_1_4_2_1_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_5, to: 70_1_4_2_1_5_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_5, to: 70_1_4_2_1_5_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_5, to: 70_1_4_2_1_5_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_5, to: 70_1_4_2_1_5_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_1, to: 70_1_4_2_1_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_5, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_1, to: 70_1_4_2_1_7, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_4_1, to: 70_1_4_2_1_8, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_2, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_3, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_4, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_5, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_6, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_7, arrows: "to", value: evalue5, color: c_artery},
+  
+  { from: 70_1_4_2_1_6_5, to: 70_1_5_2_1, arrows: "to", value: evalue5, color: c_artery},
+  { from: 70_1_5_2_1, to: 70_1_4_2_1_6_5, arrows: "to", value: evalue5, color: c_artery},
+  
+]);
+
+  // create a network
+  var container = document.getElementById("mynetwork");
+  var data = {
+    nodes: nodes,
+    edges: edges,
+  };
+ var options = {
+    nodes: {
+      shape: "dot",
+      size: 16,
+    },
+    layout: {
+      randomSeed: 100,
+    },
+    physics: {
+      enabled: true,
+      solver: "barnesHut",
+    // 'forceAtlas2Based', "repulsion", "barnesHut", "hierarchicalRepulsion"
+    barnesHut: {
+      gravitationalConstant: -2000,
+      centralGravity: 0.0,
+      springLength: 100,
+      springConstant: 0.04,
+      damping: 0.09,
+      avoidOverlap: 0.5
+    },
+      maxVelocity: 146,      
+      timestep: 0.35,
+      
+      stabilization: {
+      enabled: true,
+      iterations: 1000,
+      updateInterval: 1,
+      onlyDynamicEdges: false,
+      fit: true
+    },
+      repulsion: {
+      nodeDistance: 50 // Put more distance between the nodes.
+    },
+      
+    },
+  };
+
+  var network = new vis.Network(container, data, options);
+     
+  document.getElementById("physicsCheck").addEventListener("change", function() {
+        options.physics = this.checked; // Toggle physics
+        network.setOptions(options); // Update network options
+        network.redraw(); // Redraw network
+      });     
+  
+  // Run physics once to space out the nodes.
+     network.stabilize();
+
+     function addChildNodes(nodesToUpdate, node){
+  edges.forEach(edge => {
+    if (edge.from === node.id && nodes.get(edge.to) && !edge.dashes) {
+      let childNode = nodesToUpdate.find(node => node.id === edge.to);
+      if (childNode && childNode.hidden) {
+        childNode.hidden = false;
+        addChildNodes(nodesToUpdate, childNode);
+      }
+    }
+  });
+}
+
+network.on('selectNode', function (properties) {
+  let nodesToUpdate = [];
+  if(properties.nodes.length === 0){
+    nodes.forEach(node => {
+      if(node.hidden){ 
+        nodesToUpdate.push({id:node.id, hidden: false});
+      }
+    });
+    nodes.update(nodesToUpdate);
+    return;
+  }
+
+  nodes.forEach(node => {
+    nodesToUpdate.push({id:node.id, hidden: true});
+  });
+
+  properties.nodes.forEach(nodeId => {
+    let node = nodesToUpdate.find(node => node.id === nodeId);
+    node.hidden = false;
+    addChildNodes(nodesToUpdate, node);
+  }); 
+
+  nodes.update(nodesToUpdate);
+});
+
+network.on('deselectNode', function (properties) {
+  let nodesToUpdate = [];
+  nodes.forEach(node => {
+    if(node.hidden){ 
+      nodesToUpdate.push({id:node.id, hidden: false});
+    }
+  });
+  nodes.update(nodesToUpdate);
+});
+
+      function enterFullscreen(element) {
+        if (element.requestFullscreen) {
+          element.requestFullscreen();
+        } else if (element.mozRequestFullScreen) {
+          element.mozRequestFullScreen();
+        } else if (element.webkitRequestFullscreen) {
+          element.webkitRequestFullscreen();
+        } else if (element.msRequestFullscreen) {
+          element.msRequestFullscreen();
+        }
+      }
+
+      function exitFullscreen() {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+      }
+
+      function isFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      }
+
+      document.getElementById("toggleFullscreen").addEventListener("click", function() {
+        if (isFullscreen()) {
+          exitFullscreen();
+        } else {
+          enterFullscreen(container);
+        }
+      });     
+      
+    });
+  
+  function togglePhysics() {
+    var physicsEnabled = document.getElementById('physicsCheck').checked;
+    // Do something with the physicsEnabled variable
+}
+
+  
+  </script>
+
+</body>
