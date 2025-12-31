@@ -1,2378 +1,1922 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <!--
-By André FR Silva, 2023
-Examples:
-     - Arrhythmia ECG: <a href="https://i.postimg.cc/1zxRVLXZ/image.png">https://i.postimg.cc/1zxRVLXZ/image.png</a>
-     - Regular ECG: <a href="https://i.postimg.cc/QxBfX5Gh/image.png">https://i.postimg.cc/QxBfX5Gh/image.png</a>
--->
-      
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://visjs.github.io/vis-network/standalone/umd/vis-network.min.js"></script>
+  <meta charset="UTF-8"></meta>
+  <title>Sheets2Network</title>
+
+  <!-- Vis.js -->
+  <script src="https://visjs.github.io/vis-network/standalone/umd/vis-network.min.js"></script>
+  <!-- XLSX for Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+  <!-- Chart.js for Analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
-  <style>    
 
+  <style>
+    /* Basic layout and styling */
     body {
-        margin: 0;
-        padding: 0;
-        font-family: 'Arial', monospace;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      margin: 0; 
+      padding: 0;
+      background-color: #f9f9f9;
+      color: #333;
     }
-    
-    .title {
-      background-color: black;
+    .content-container {
+      width: 95%;
+      margin: 10px auto;
+      max-width: 1200px;
+    }
+    h2, h3 {
+      font-weight: 600;
+    }
+    p { line-height: 1.4; }
+    .separator a img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 1em auto;
+    }
+
+    button {
+      cursor: pointer;
+      border-radius: 4px;
+      border: none;
+      padding: 6px 12px;
+      font-size: 14px;
+      transition: background-color 0.2s, opacity 0.2s;
+    }
+    button:hover {
+      opacity: 0.85;
+    }
+    .button {
+      background-color: #4CAF50;
+      color: #fff;
+      margin: 2px 3px;
+    }
+
+    /* Toggling buttons (Groups / Color Grading) */
+    .toggleBtn {
+      background-color: #4CAF50;
       color: white;
-      padding: 5px;
+      margin-left: 8px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .toggleBtn.off {
+      background-color: #ccc;
+      color: #666;
+    }
+
+    /* The Vis Network container */
+    #mynetwork {
       width: 100%;
-      text-align: center;
-    }
-    
-.special-letter {
-      font-size: 36px;
-      font-weight: bold;
-      color: red;
-      display: inline-block;
-      animation: special-letter-animation 1.2s infinite;
+      height: 600px;
+      border: 1px solid lightgray;
+      background-color: white;
+      position: relative;
+      margin: 10px 0;
     }
 
-    @keyframes special-letter-animation {
-      0% {
-        transform: scale(1);
-      }
-      10% {
-        transform: scale(1.7);
-      }
-      20% {
-        transform: scale(1);
-      }
-      30% {
-        transform: scale(2);
-      }
-      70% {
-        transform: scale(1.1);
-      }
-      100% {
-        transform: scale(1);
-      }
+    /* Error panel (small font, faded red boxes, one error per line) */
+    #errorPanel {
+      font-size: 12px;
+      margin: 8px 0 6px 0;
     }
-    
-    .tooltip {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 10px;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    border-radius: 5px;
-    z-index: 1000;
-}
-
-.tooltip img {
-    max-width: 100%;
-    max-height: 300px;
-}
-
-    #recordTimeButton {
-    width: 100%;
-    padding: 20px;
-    font-size: 18px;
-    cursor: pointer;
-}
-  
-           #video-player {
-            width: 720px;
-        }
-    
-   .drop-zone {
-    border: 2px dashed #aaa;
-    padding: 20px;
-    margin: 10px 0;
-    text-align: center;
-    transition: border-color .3s;
-  }
-  
-  .drop-zone.dragover {
-    border-color: #007bff;
-  }
-    
-      .drop-zone2 {
-    border: 2px dashed #aaa;
-    padding: 20px;
-    margin: 10px 0;
-    text-align: center;
-    transition: border-color .3s;
-  }
-  
-  .drop-zone2.dragover {
-    border-color: #007bff;
-  }
-    
-      .drop-zone3 {
-    border: 2px dashed #aaa;
-    padding: 20px;
-    margin: 10px 0;
-    text-align: center;
-    transition: border-color .3s;
-  }
-  
-  .drop-zone3.dragover {
-    border-color: #007bff;
-  }
-    
-    .marker {
-    position: absolute;
-    height: 6px;
-    width: 6px;
-    background: black;
-    border-radius: 50%;
-}
-    
-   #ecg {
-      width: 98%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }
-    
-       #ecg2 {
-      width: 98%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }  
-    
-    #ecg3 {
-      width: 98%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }  
-    
-    #ecg4 {
-      width: 98%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }  
-
-    table {
-      width: 100%; 
-      border-collapse: collapse;
-        table-layout: fixed;
-    }
-    
-
-td {
-    width: 50%;
-}
-    
-        td:first-child {
-        text-align: right;
+    .error-line {
+      background: rgba(229, 57, 53, 0.10);
+      border-left: 3px solid #e53935;
+      padding: 6px 8px;
+      margin: 4px 0;
+      border-radius: 4px;
+      line-height: 1.3;
+      word-break: break-word;
     }
 
-    td:last-child {
-        text-align: left;
+    /* Watermark */
+    #watermark {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: gray;
+      opacity: 0.5;
+      font-size: 12px;
+      z-index: 1000;
+    }
+    #watermark a {
+      color: gray; 
+      text-decoration: none;
     }
 
-    th, td {
+    /* Analytics charts */
+    #degreeChart, #clusteringChart {
+      display: none;
+      height: 400px;
+      margin-top: 20px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+    }
+
+    /* Kanban board styles */
+    #kanbanContainer {
+      width: 100%;
+      margin-top: 30px;
+    }
+    .kanban-board {
+      display: flex;
+      flex-wrap: wrap; 
+      gap: 15px;
+    }
+    .kanban-column {
+      min-width: 220px;
+      flex: 1 1 auto;
+      background-color: #fafafa;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       padding: 10px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    .kanban-column-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .kanban-card {
+      margin: 6px 0;
+      padding: 6px 8px;
+      border-radius: 4px;
+      background-color: #eee;
+      color: #fff; /* White text on the card */
+      cursor: pointer;
+      font-size: 13px;
+      transition: transform 0.2s;
+      position: relative;
+    }
+    .kanban-card:hover {
+      transform: scale(1.01);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    /* An info icon if there's a comment */
+    .kanban-info-icon {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      font-size: 14px;
+      color: #fff;
+      background-color: rgba(0,0,0,0.3);
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      text-align: center;
+      line-height: 18px;
+      cursor: pointer;
+    }
+
+    /* Table / localStorage UI */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+    }
+    th, td {
       text-align: left;
+      padding: 8px;
       border-bottom: 1px solid #ddd;
     }
-
     th {
       background-color: #f2f2f2;
     }
-    
-    .toggle-switch-label {
-      position: relative;
-      display: inline-block;
-      width: 60px;
-      height: 34px;
-    }
-
-    .toggle-switch-label input[type="checkbox"] {
-      display: none;
-    }
-
-    .toggle-switch-slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+    .deleteButton {
       background-color: red;
-      transition: .4s;
-      border-radius: 34px;
+      color: white;
+      padding: 5px 10px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 3px;
+    }
+    .deleteButton:hover {
+      background-color: #cc0000;
     }
 
-    .toggle-switch-slider:before {
-      position: absolute;
-      content: "";
-      height: 26px;
-      width: 26px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .4s;
+    .spinner {
+      display: none; 
+      width: 50px; 
+      height: 50px;
+      border: 5px solid #f3f3f3;
       border-radius: 50%;
+      border-top: 5px solid #3498db;
+      animation: spin 1s linear infinite;
+      margin: 10px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .vis-tooltip {
+      z-index: 10000 !important;
     }
 
-    input[type="checkbox"]:checked + .toggle-switch-slider {
-      background-color: #AAFF00;
-    }
-
-    input[type="checkbox"]:checked + .toggle-switch-slider:before {
-      transform: translateX(26px);
-    }
-    
-  .image-container {
-      display: flex;
-      justify-content: center;
+    /* PATH-FINDING UI (WITH DROPDOWNS & SEARCH MODALS) */
+    #pathContainer {
+      display: flex; 
+      flex-wrap: wrap;
       align-items: center;
+      margin-bottom: 15px;
+      gap: 10px;
+    }
+    #pathFrom, #pathTo {
+      min-width: 150px;
+      max-width: 200px;
+    }
+    /* The Search Modal */
+    .search-modal-overlay {
+      display: none; 
+      position: fixed; 
+      top:0; 
+      left:0; 
+      width:100%; 
+      height:100%;
+      background-color: rgba(0,0,0,0.7);
+      z-index:3000;
+    }
+    .search-modal {
+      background-color: #fff;
+      width: 90%;
+      max-width: 500px;
+      margin: 50px auto;
+      position: relative;
+      padding: 20px;
+      border-radius: 6px;
+    }
+    .close-search-modal {
+      position: absolute;
+      top: 10px; 
+      right: 10px; 
+      border: none; 
+      background: none; 
+      font-size: 18px; 
+      cursor: pointer;
+    }
+    #searchInputFrom, #searchInputTo {
       width: 100%;
+      padding: 6px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .searchResultList {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 0; 
+      padding: 0;
+      list-style: none;
+    }
+    .searchResultList li {
+      padding: 6px 8px;
+      cursor: pointer;
+      border-bottom: 1px solid #ddd;
+    }
+    .searchResultList li:hover {
+      background-color: #eee;
     }
 
-    .image-container img {
-      max-width: 35%;
-      height: auto;
-    }    
-    
-      #mynetwork {
-    width: 400px;
-    height: 400px;
-    border: 1px solid lightgray;
-    background-color: white; /* Add this line */
-  }   
-   
-   #degreeChart, #clusteringChart {
-  display: none;
-  height: 400px;
-}
-    
+    /* PATH RESULT BOX */
+    #pathResult {
+      display: none;
+      border: 1px solid #ccc;
+      background-color: #fafafa;
+      padding: 8px 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      position: relative;
+      max-width: 600px;
+    }
+    #pathResult h4 {
+      margin: 0 0 5px 0;
+      font-size: 14px;
+    }
+    #pathList {
+      margin: 0; 
+      padding-left: 20px;
+    }
+    #pathList li {
+      margin: 3px 0;
+      font-size: 13px;
+    }
+    .closePathBtn {
+      position: absolute;
+      top: 5px; 
+      right: 8px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 14px;
+      color: #666;
+    }
+    .closePathBtn:hover {
+      color: #000;
+    }
+
+    /* Kanban Comment MODAL for item titles */
+    #kanbanCommentModalOverlay {
+      display: none;
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      z-index: 4000;
+    }
+    #kanbanCommentModal {
+      background-color: #fff;
+      width: 90%;
+      max-width: 500px;
+      margin: 50px auto;
+      position: relative;
+      padding: 20px;
+      border-radius: 6px;
+    }
+    #kanbanCommentModalClose {
+      position: absolute;
+      top: 10px; 
+      right: 10px; 
+      border: none; 
+      background: none; 
+      font-size: 18px; 
+      cursor: pointer;
+    }
+    #kanbanCommentModalContent {
+      font-size: 14px;
+      white-space: pre-line;
+    }
   </style>
 </head>
 
-<body>  
-  
-  <center>
-  <h3><a href="https://medicinup.blogspot.com/p/ecgshop.html">Voltar</a></h3><br>
-  </center>
-    
-  <div class="image-container">
-      <h1><span class="special-letter">EEG</span> SHOP 💻</h1>
-  </div>
-   
-  <div class="image-container">
-    <center>
-    <h3>Resumindo, concluindo e não baralhando os mandamentos do Dr. Nuno Cortez-Dias. <br> E que Deus Nosso Senhor esteja do nosso lado.</h3>
-    </center>
-</div>
-  <br>
-   <div class="image-container">
-  <div id="video-player">
-        <video width="100%" height="100%" controls>
-            <source src="https://github.com/andrefrsilva/sheets2network/raw/main/ECG%20Shop%20-%2050%20cent%20song.mp4" type="video/mp4">
-        </video>
-    </div>
-      
-    </div>
-  
-  <br>
-    <div class="image-container">
-<div class="sketchfab-embed-wrapper"> <iframe title="Sistema de Condução do Coração" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share width="500" height="350" src="https://sketchfab.com/models/b879674717f045eca21034409ae5696e/embed?autostart=1&annotations_visible=0"> </iframe> </div>
-  </div>
-      <br>
-                       
-  <div class="image-container">
-    <img id='figures' src="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png" alt="Figure">
-  </div>
-  
-  <div class="image-container">
-    <div class="title">
-      <h1>R<span class="special-letter">A</span>TE, R<span class="special-letter">H</span>YTHM & <span class="special-letter">I</span>NTERVALS</h1>
-    </div>
-  </div>
-  
-   <br>
-  <div class="image-container">
-  <h3>Frequência, Ritmo e Intervalos</h3>
-  </div>
-  
-  <br>
-  <div class="image-container">
-        <center>
-  <h2>Carregue uma imagem recortada da derivação II com exatamente 10s (40 quadrados grandes).</h2>
-      </center>
-</div>
-  
-<div class="image-container">
-  <input type="file" id="upload" accept="image/*">
-</div>
+<body>
+<div class="content-container">
 
-<div class="image-container">
-  <div class="drop-zone">
-    <p>Ou arraste a imagem para aqui. Ou copie e cole com control+V</p>
-  </div>
-</div>
+  <p>Let's make the complex simple and fun!</p>
+  <p>Try this instead of multi-slides Powerpoint presentations or long, serial texts.</p>
+  <p>Boil it down to nodes and relationships between them.</p>
+  <p>You can click on a node and only see its descendants.</p>
+  <p>You can drag the nodes.</p>
+  <h2>You will STAND OUT from your peers.</h2>
   <br>
-  <div class="image-container">
-<h2>Toque em cada pico (onda R <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png"></i>), da esquerda para a direita</h2>
-  </div>
-  <img id="ecg" src="https://i.postimg.cc/QxBfX5Gh/image.png" alt="ECG">
-<div id="markers-container" style="height: 20px; position: relative;"></div>
   
-<div class="image-container">
-    <button id="recordTimeButton" style="display: none;">(alternativa à século XVIII) Clique manualmente ao ritmo da pulsação</button>
-</div>
+  <p>Examples of use cases:</p>
+  <ul>
+    <li>Drug interactions</li>
+    <li>Human anatomy</li>
+    <li>Disease pathways</li>
+    <li>Genograms</li>
+    <li>Clinical history</li>  
+    <li>Gene networks</li>  
+    <li>Microbiome interactions</li>
+    <li>Integration of clinical studies</li>
+    <li>Healthcare provider networks</li>
+  </ul>
+  <p>Simply use the Sheets template file, insert your nodes and links between them, share the Sheets on the Web as .xlsx, copy the url, paste it here and load it.</p>  
+  <p>Then you can work side by side, making changes on the Sheets Document and loading the data again here.</p>
   
-<div class="image-container">
-    <p id="intervals" style="display: none;"></p>
-      <br>
-    </div>
-  
-  <div class="image-container">
-<h2>Frequência cardíaca (indiretamente os intervalos R-R)</h2>
-  </div>
-  
-  <div class="image-container">
-    <div style="max-width:400px;">
-      <canvas id="boxPlot" height="300"></canvas>
-    </div>  
-  <div style="max-width:400px;">
-  <canvas id="scatterPlot" height="300"></canvas>
-</div>
-  </div>
-    
   <br>
- 
-
-    <div class="image-container">
-      <span>Som do coração (+ romântico)</span>&nbsp;&nbsp;
-      
-      <label class="toggle-switch-label">
-    <input type="checkbox" id="soundToggle" onchange="toggleSound()">
-    <span class="toggle-switch-slider"></span>
-</label>&nbsp;&nbsp;
-      <button onclick="startBeeping()" style="font-size: 20px; padding: 15px 30px;">Tocar o ritmo do paciente</button>&nbsp;&nbsp;
-<button onclick="stopBeeping()" style="font-size: 20px; padding: 15px 30px;">Parar</button>
+  <div class="separator" style="clear: both;">
+    <a href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj3veNG49iQouf0DITSzDZmn0urtwGt5t3hJBR30Qg4Pz1DwQ8MciogfeXKHzzTeTaao9BpFE_vsq3jLrwD1Cs8sA53cn7vULuByqbj0gE46dR5DB0sDet3ZROcwOrQ7ND3HvspWsXktoC34G_Byv5gi9L4gQdg3ZsQpzS-FjUQOFLGr9msi2fdfr4ruv7V/s2127/network_example.png">
+      <img border="0" data-original-height="1103" data-original-width="2127" height="333" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj3veNG49iQouf0DITSzDZmn0urtwGt5t3hJBR30Qg4Pz1DwQ8MciogfeXKHzzTeTaao9BpFE_vsq3jLrwD1Cs8sA53cn7vULuByqbj0gE46dR5DB0sDet3ZROcwOrQ7ND3HvspWsXktoC34G_Byv5gi9L4gQdg3ZsQpzS-FjUQOFLGr9msi2fdfr4ruv7V/w640-h333/network_example.png" width="640" />
+    </a>
   </div>
-    <br>
-  
 
+  <div class="spinner" id="loadingSpinner"></div>  
   
-  <div class="image-container">
-    <table>
-      <tr id="average-rate-row">
-        <td></td>
-        <td>Frequência Cardíaca Média <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/0yXLdzcK/image.png"></i><br>(><span class="special-letter">150</span> bpm leva a suspeita de flutter auricular)<br><h3 id="average-rate">-</h3></td>
-      </tr>
-      
-      <tr>
-        <td>
-  <label class="toggle-switch-label">
-    <input type="checkbox" class="cardiac-toggle">
-    <span class="toggle-switch-slider"></span>
+  <br>
+  <button onclick="refreshPage()" class="button">Refresh</button>
+  <button id="toggleFullscreen" class="button">Fullscreen</button>
+  <br><br>
+
+  <input type="checkbox" id="physicsCheck" checked> Physics
+  <br><br>
+
+  <label>
+    <input type="checkbox" id="seeAllDescendantsCheckbox" name="seeAllDescendants">
+    See all descendants
   </label>
-</td>
-      <td>Ondas <span class="special-letter">P</span> presentes e porreiras? <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.stepwards.com/wp-content/uploads/2018/03/Screen-Shot-2018-03-07-at-9.24.06-PM-2.png"></i><br>(Onda P positiva em I, II e aVF e negativa em aVR; <<span class="special-letter">120</span>ms (3 quadradinhos), Amplitude <2,5mm)</td>
-  </tr>
-      
-      <tr>
-        <td>
-  <label class="toggle-switch-label">
-    <input type="checkbox" class="cardiac-toggle">
-    <span class="toggle-switch-slider"></span>    
+  <br><br>
+
+  <label>
+    <input type="checkbox" id="curvedEdgesCheckbox"> Curved Edges
   </label>
-</td>
-        <td><span class="special-letter">Q</span>RS são estreitos? <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.nurseslearning.com/courses/nrp/nrp1619/images/Figure-36.jpg"></i> <br>(Ver na derivação que tiver QRS mais longo; [60, 100]ms (Normal) | [100, 120] (Ligeiramente alargado → Hemibloqueio) | ><span class="special-letter">120</span> (3 quadradinhos) (Alargado → Bloqueio completo)<br><h3 id="average-QRS">-</h3></td>
-      </tr>
-      
-      <tr>
-       <td>
-  <label class="toggle-switch-label">
-    <input type="checkbox" class="cardiac-toggle">
-    <span class="toggle-switch-slider"></span>
+  <br><br>
+
+  <label>
+    <input type="checkbox" id="edgesColorCheckbox" checked> Edges Colors
   </label>
-</td>
-        <td>Ritmo é <span class="special-letter">R</span>egular? (R-R constante) <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://d1z8zkw1yi6kd7.cloudfront.net/uploads/ckeditor/pictures/data/000/001/302//content/rhythm.jpeg"></i><br>(Nota: arritmia sinusal respiratória é fisiológica.)</td>
-      </tr>
-      
-      <tr>
-        <td>
-  <label class="toggle-switch-label">
-    <input type="checkbox" class="cardiac-toggle">
-    <span class="toggle-switch-slider"></span>
-  </label>
-</td>
-        <td>P-R / P-Q<span class="special-letter">S</span>saudável? <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.nucleotype.com/static/be2345aef6cb027a6eeda7bec95bc509/0f98f/EKG-waves-bumps.jpg"></i><br>(Ver em II; P-R entre [<span class="special-letter">120</span>, 200]ms (3 a 5 quadradinhos) e constante; Baixo? Síndrome Wolff-<strong>P</strong>a<strong>R</strong>kinson-White. Alto? Bloqueio AV de <strong>PR</strong>imeiro grau.<br><h3 id="average-PR">-</h3></td>
-      </tr>
-    </table> 
+  <br><br>
+
+  <div style="margin-bottom: 10px;">
+    <div id="groupToggles" style="display: inline-block;"></div>
+    <div id="colorGradingToggles" style="display: inline-block; margin-left: 30px;"></div>
   </div>
 
-<br>
-<div class="image-container">
-    <button id="analyzeButton"  style="font-size: 20px; padding: 15px 30px;">Analisar o ritmo</button>
-</div>
-<div class="image-container">
-    <div id="resultrhythm" style="text-align: center; font-size: 20px; margin-top: 20px;"></div>
+  <!-- PATH-FINDING UI -->
+  <div id="pathContainer">
+    <label>From:</label>
+    <select id="pathFrom"></select>
+    <button class="button" onclick="openSearchModal('from')">Search</button>
+
+    <label>To:</label>
+    <select id="pathTo"></select>
+    <button class="button" onclick="openSearchModal('to')">Search</button>
+
+    <button onclick="findPath()" class="button">Find Path</button>
   </div>
 
-<br><br>
-<div class="image-container">
-<h2>Intervalos PR / PQ.</h2>
+  <!-- The search modal for FROM -->
+  <div id="searchModalFrom" class="search-modal-overlay" onclick="maybeCloseSearchModal(event, 'from')">
+    <div class="search-modal">
+      <button class="close-search-modal" onclick="closeSearchModal('from')">X</button>
+      <input type="text" id="searchInputFrom" placeholder="Type to filter..." oninput="filterSearch('from')">
+      <ul id="searchResultsFrom" class="searchResultList"></ul>
+    </div>
   </div>
+  <!-- The search modal for TO -->
+  <div id="searchModalTo" class="search-modal-overlay" onclick="maybeCloseSearchModal(event, 'to')">
+    <div class="search-modal">
+      <button class="close-search-modal" onclick="closeSearchModal('to')">X</button>
+      <input type="text" id="searchInputTo" placeholder="Type to filter..." oninput="filterSearch('to')">
+      <ul id="searchResultsTo" class="searchResultList"></ul>
+    </div>
+  </div>
+
+  <!-- PATH RESULT BOX -->
+  <div id="pathResult">
+    <button class="closePathBtn" onclick="closePathResult()">X</button>
+    <h4>Path</h4>
+    <ol id="pathList" style="margin:0;"></ol>
+  </div>
+
+  <!-- ERROR PANEL: appears immediately before the network rectangle -->
+  <div id="errorPanel" aria-live="polite"></div>
+
+  <div id="mynetwork"></div>
+
+  <div id="kanbanContainer" style="display: none;">
+    <h3>Kanban Board</h3>
+    <div class="kanban-board" id="kanbanBoard"></div>
+  </div>
+
+  <!-- Kanban Comment Modal -->
+  <div id="kanbanCommentModalOverlay" onclick="maybeCloseKanbanCommentModal(event)">
+    <div id="kanbanCommentModal">
+      <button id="kanbanCommentModalClose" onclick="closeKanbanCommentModal()">X</button>
+      <div id="kanbanCommentModalContent"></div>
+    </div>
+  </div>
+
+  <a href="https://docs.google.com/spreadsheets/d/1BlMLCKcZed6vBTde19MLxtS-LElQVvYWQOms9_T-MPo/copy" target="_blank">Sheets Template</a>
   <br>
-  <div class="image-container">
-<h2>Toque em cada início e fim dos intervalos PR / PQ <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png"></i>, da esquerda para a direita</h2>
-  </div>
-<img id="ecg2" src="https://i.postimg.cc/QxBfX5Gh/image.png" alt="ECG">
-<div id="markers-container2" style="height: 20px; position: relative;"></div>
+
+  <input type="text" id="dataURL" 
+    value="https://docs.google.com/spreadsheets/d/e/2PACX-1vToVliu-S3QSp7qP0WgtdhPFioBNTXG-LbLFxMaYZSL8bec-96v0LzK8Z2txq0-IhPl9y30Bt8lHDL9/pub?output=xlsx" 
+    style="width: 60%;">
+  <button id="loadDataButton" class="button">Load</button>
+  <button id="shareButton" class="button">Share</button>
   
-  <br>
-  <div class="image-container">
-          <div style="max-width:600px;">
-          <canvas id="boxPlot2" width = "250" height="300"></canvas>
-        </div>
+  <p>You can also save multiple networks below so that the next time you load the website on this device, you'll have them here.</p>
+  <button onclick="addRow()" class="button">Add New Row</button>
+  <button id="resetButton" onclick="resetData()" class="button" style="background-color: #f44336;">Reset</button>
+  <button onclick="downloadUrlTable()" class="button">Download Table</button>
+  <button onclick="document.getElementById('uploadTableFile').click();" class="button">Upload Table</button>
+  <input type="file" id="uploadTableFile" accept=".json" style="display:none" onchange="uploadUrlTableFile(event)">
 
-        <div style="max-width:600px;">
-          <canvas id="scatterPlot2" width = "300" height="300"></canvas>
-        </div>
-  </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- New Set 3 -->
- <div class="image-container">
-<h2>Intervalos QRS.</h2>
-  </div>
-<div class="image-container">
-<span>Se estiverem maiores noutra derivação que não a II, carregue uma imagem recortada dessa.</span>
-  </div><br>
-<div class="image-container">
-    <input type="file" id="upload3" accept="image/*">
-</div><br>
-<div class="image-container">
-    <label for="secondsecg3">Duração em segundos da tira na nova imagem (1 quadrado grande = 0.2s):</label><br>
-  </div>  
-    <div class="image-container">
-    <input type="number" id="secondsecg3" name="secondsecg3" style="font-size: 20px; padding: 10px 10px;">
-  </div><br>
-<div class="image-container">
-    <h2>Toque em cada início e fim dos intervalos QRS <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png"></i>, da esquerda para a direita</h2>
-</div>
-<img id="ecg3" src="https://i.postimg.cc/QxBfX5Gh/image.png" alt="ECG">
-<div id="markers-container3" style="height: 20px; position: relative;"></div>
-<div class="image-container">
-    <p id="intervals3" style="display: none;"></p>
-</div>
-<div class="image-container">
-    <div style="max-width:400px;">
-        <canvas id="boxPlot3" height="300"></canvas>
-    </div>
-    <div style="max-width:400px;">
-        <canvas id="scatterPlot3" height="300"></canvas>
-    </div>
-</div>
-
-<!-- New Set 4 -->
-<div class="image-container">
-<h2>Intervalos QT.</h2>
-  </div>
-<div class="image-container">
-<span>Se achar melhor outra derivação não a II, carregue uma imagem recortada dessa.</span>
-  </div><br>
-<div class="image-container">
-    <input type="file" id="upload4" accept="image/*">
-</div>
-<br>
-<div class="image-container">
-    <label for="secondsecg4">Duração em segundos da tira na nova imagem (1 quadrado grande = 0.2s):</label><br>
-  </div>  
-    <div class="image-container">
-    <input type="number" id="secondsecg4" name="secondsecg4" style="font-size: 20px; padding: 10px 10px;">
-  </div><br>
-
-<div class="image-container">
-    <h2>Toque em cada início e fim dos intervalos QT <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://www.researchgate.net/publication/304069701/figure/fig6/AS:668587320672273@1536415047777/Figura-4-Ondas-elementares-de-um-sinal-de-ECG.png"></i>, da esquerda para a direita</h2>
-</div>
-<img id="ecg4" src="https://i.postimg.cc/QxBfX5Gh/image.png" alt="ECG">
-<div id="markers-container4" style="height: 20px; position: relative;"></div>
-<div class="image-container">
-    <p id="intervals4" style="display: none;"></p>
-</div>
-
-<div class="image-container">
-<h3>Intervalos QT corrigidos</h3>
-  </div><br>
-
-<div class="image-container">
-    <div style="max-width:400px;">
-        <canvas id="boxPlot4" height="300"></canvas>
-    </div>
-    <div style="max-width:400px;">
-        <canvas id="scatterPlot4" height="300"></canvas>
-    </div>
-</div>
-
-<div class="image-container">
-    <table>      
-      <tr>
-        <td>
-  <label class="toggle-switch-label">
-    <input type="checkbox">
-    <span class="toggle-switch-slider"></span>
-  </label>
-</td>
-        <td>QT corrigido <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/Y2n6JCD1/image.png"></i> <br><h3 id="average-QT">-</h3></td>
-      </tr>   
-    </table> 
-  </div>
-
-
-  <div class="image-container">
-    <div class="title">
-      <h1><span class="special-letter">A</span>xis</h1>
-    </div>
-  </div>
-
-  <br>
-  <div class="image-container">
-  <h3>Eixo Cardíaco</h3>
-  </div>
-  
-  <div class="image-container">
-        <center>
-  <h4>Basta contar o nº de quadradinhos da amplitude onda R e subtrair a esse valor (positivo ou negativo) o nº de quadradinhos da amplitude da onda S</h4>
-    </center>
-  </div>
-  <br>
-  <div class="image-container">
-    <label for="leadI">Derivação I:</label><br>
-  </div>  
-    <div class="image-container">
-    <input type="number" id="leadI" name="leadI" style="font-size: 20px; padding: 10px 10px;"><br><br>
-  </div>
-<br>
-  <div class="image-container">
-    <label for="leadAVF">Derivação aVF</label><br>
-    </div>
-    <div class="image-container">
-    <input type="number" id="leadAVF" name="leadAVF" style="font-size: 20px; padding: 10px 10px;"><br><br>
-  </div>
-<br>
-  <div class="image-container">
-    <button onclick="calculateCardiacAxis()" style="font-size: 20px; padding: 15px 30px;">Calcular</button>
-  </div>
-  <div class="image-container">
-    <h3 id="result"></h3>
-  </div>
-  <br>
-  
-  <div class="image-container">
-  <canvas id="axisCanvas" width="400" height="400"></canvas>
-  </div>
-  
- <div class="image-container">
-    <div class="title">
-      <h1><span class="special-letter">H</span>ypertrophy</h1>
-    </div>
-  </div>
-<br>
-  <div class="image-container">
-  <h3>Hipertrofia do miocárdio</h3>
-  </div>
-
-
- <div class="image-container">
-  <h4>Dilatação auricular</h4>
-  </div>
-  </div>
- <div class="image-container">
-    <table>
-  <tr>
-  </tr>
-  <tr>
-    <td>Anomalia da aurícula →R</td>
-    <td>Amplitude onda P >=2,5 mm II, III ou avF. Também associado: amplitude da onda P em V1 >1.5mm</td>
-  </tr>
-  <tr>
-    <td>Anomalia da aurícula L←</td>
-    <td>Onda P entalhada e >0,12s em I, II, aVF ou aVL e onda P em VI com componente negativo dominante.</td>
-  </tr>
-        <tr>
-    <td>Dilatação biauricular</td>
-    <td>Amplitude da onda P em DII >3mm e >120ms e em VI larga, bifásica, com componente 
-positiva >2mm e componente negativa > 1 mm e >40ms </td>
-  </tr>
-</table>
-  </div>
-
-<br>
-
-<div class="image-container">
-  <h4>Dilatação ventricular</h4>
-  </div>
-  </div>
- <div class="image-container">
-    <table>
-  <tr>
-  </tr>
-  <tr>
-    <td>Hipertrofia ventricular →R</td>
-    <td>Ao contrário da hipertrofia ventricular esquerda, não existem critérios formais de diagnöstico de hipertrofia do ventriculo direito.<br>Mesmo assim, ver: Amplitude aumentada da onda R em V1, ou V2; Desenvolvimento BCRD com grande amplitude em R' ou R entalhada em V1; Desvio direito do eixo elétrico; Critérios para dilatação auricular direita; Alterações da repolarização tipo sobrecarga em V11 ou V2.
-</td>
-  </tr>
-  <tr>
-    <td>Hipertrofia ventricular L←</td>
-    <td>Critérios de Sokolow-Lyon: Soma da amplitude da onda R mais alta em V5 ou V6 com a amplitude da onda S em V1 > 35mm (se >53 anos) | > 53mm (se <=53 anos).<br>Reforça diagnóstico se tiver padrão de sobrecarga ventricular esquerda: infradesnivelamento do segmento ST com inda T invertida em V6.</td>
-  </tr>
-</table>
-  </div>
-
-
-<div class="image-container">
-    <div class="title">
-      <h1><span class="special-letter">I</span>NFARCT</h1>
-    </div>
-  </div>
-
-<br>
-  <div class="image-container">
-  <h3>Enfarte do miocárdio</h3>
-  </div>
-  
-  <table>
-  <tr>
-  </tr>
-  <tr>
-    <td>1</td>
-    <td>A que horas começou a dor?</td>
-    <td>Note-se que a dor já é depois de alterações eletrocardiográficas, já é algo "tardia" e começa muito subtil.</td>
-  </tr>
-  <tr>
-    <td>2</td>
-    <td>É a primeira vez que tem dor no peito?</td>
-    <td>Antecedentes de doença coronária.</td>
-  </tr>
-  <tr>
-    <td>3</td>
-    <td>Factores de risco cardiovascular</td>
-    <td>Ex: HTA, DM, dislipidémia, tabagismo, intervenções cirúrgicas, história familiar, etc.</td>
-  </tr>
-  <tr>
-    <td>4</td>
-    <td>Quais são os medicamentos que está a tomar?</td>
-    <td>Ex: Viagra (porque assim já tem vasodilatador).</td>
-  </tr>
-  <tr>
-    <td>5</td>
-    <td>Alguma vez teve alergia a algum medicamento?</td>
-    <td>Ex: É comum alergia ao contraste.</td>
-  </tr>
-</table>
-<br>
-  
-  <br>
-<div class="image-container">
-  <table id="newTable">
+  <table id="urlTable">
     <tr>
-      <th>Alteração</th>
-      <th>Elevação ST</th>
-      <th>Depressão ST*</th>
-      <th>Redução da onda R</th>
-      <th>Inversão da onda T</th>       
-      <th>Onda Q patológica</th>   
-    </tr>
-    <tr>
-      <th>Descrição</th>      
-      <th>Segmento ST acima do normal <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://gcdnb.pbrd.co/images/tedTRYrAZ6Of.png"></i><br>Quando inclui a onda T, chama-se onda de Pardy.<br>Verificar se não é explicada simplesmente por alterações recíprocas de elevação de ST do outro lado.<br>Verificar se está presente em ≥2 derivações que avaliem a mesma região do coração e se amplitude >1mm nas derivações dos membros e >2mm nas derivações precordiais.</th>
-      <th>Segmento ST abaixo do normal <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://gcdnb.pbrd.co/images/0kTtUCB6EI91.png"></i></th>
-      <th>Diminuição abrupta na progressão da amplitude <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://ecgwaves.com/wp-content/uploads/2016/09/ecg-r-wave-progression-normal-chest-leads-v1-v6.jpg"></i></th>      
-      <th>Para baixo, em vez de para cima e simétrica, em vez de assimétrica <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://gcdnb.pbrd.co/images/YP52LLjGo8JT.png"></i><br>Também pode ser bifásica (metade positiva e metade negativa), planar, etc.<br>Numa fase muito precoce podem ser hiperagudas (grande amplitude).</th>
-      <th>><span class="special-letter">40</span>ms (1 quadradinho) ou amplitude >1/4 da respetiva onda R <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://img.stevegallik.org/what_lead_do_i_check_for_pathologic_q_waves.PNG"></i></th>   
-    </tr>
-    <tr>
-      <th>Corrente de</th>       
-      <th>Lesão</th>
-      <th>Isquémia</th>
-      <th>Isquémia</th>
-      <th>Isquémia</th>      
-       <th>Necrose</th>      
-    </tr>
-     <tr>
-      <th>Fase</th>           
-      <th>Precoce <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
-      <th>Precoce <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
-      <th>Precoce <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
-      <th>Precoce <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
-       <th>Tardia <i class="fas fa-info-circle tooltip-icon" data-tooltip="https://i.postimg.cc/bvVgXDkn/image.png"></i></th>
-    </tr>
-    <tr>
-      <th>Derivação \ Alteração recíproca</th> 
-      <th>*Depressão de ST</th>
-      <th>-</th>
-      <th>-</th>
-      <th>-</th>     
-       <th>Aumento desproporcionado da amplitude da onda R</th>
+      <th>Title</th>
+      <th>URL</th>
+      <th>Action</th>
     </tr>
   </table>
-</div>
-
-<br>
- <div class="image-container">
-  <h3>Localização</h3>
-  </div>
-
- <div class="image-container">
-<div class="sketchfab-embed-wrapper"> <iframe title="Elétrodos no coração" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share width="500" height="350" src="https://sketchfab.com/models/beb79750243841b8be64e2f59b4f64d0/embed?autostart=1&annotations_visible=0"> </iframe> </div>
-</div>
-<br>
- <div class="image-container">
-<div class="sketchfab-embed-wrapper"> <iframe title="Artérias do coração" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share width="500" height="350" src="https://sketchfab.com/3d-models/coronary-arteries-blood-supply-to-ventricles-60e1da3fbef542c6bcf61cdac312ce4f/embed?autostart=1&annotations_visible=0"> </iframe> </div>
-</div>
-
-<br>
-<div class="image-container">
-<img src="https://i.postimg.cc/rpSNZngD/art-rias-do-cora-o-e-ecg.png" alt="Art Rias do Coração e ECG">
-  </div>
-
-<br>
- <div class="image-container">
-  <h3>Rede arterial</h3>
-  </div>
-<br>
-
-
-  <div class="image-container">
-      <span>Dinâmica Física</span>&nbsp;&nbsp;
-      <label class="toggle-switch-label">
-    <input type="checkbox" class="physics-toggle" id="physicsCheck" checked onchange="togglePhysics()">
-    <span class="toggle-switch-slider"></span>
-</label>&nbsp;&nbsp;
-  </div>
-
-
-<center>
-  <br>
- <button id="toggleFullscreen" style="font-size: 20px; padding: 15px 30px;">Ecrã inteiro</button>
-  <br /><br />
-  <div id="mynetwork"></div>
-    
-  <a href="https://github.com/andrefrsilva/sheets2network/raw/main/_B_joint.xlsx" target="_blank" style="display: none;">Bones and Joints Excel</a> <br><br>  
-  <input accept=".xlsx, .xls" capture="" id="inputExcel" type="file" onclick="showAlert()" style="display: none;"/>
-</center>
-
-
-<br>
-<br>
-<center>
-    <span>André FR Silva (2023) — De Lisboa, com ❤️</span>
-</center>
-<br>
   
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://unpkg.com/@sgratzl/chartjs-chart-boxplot@3"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.0.2/chartjs-plugin-annotation.min.js"></script>
+  <br><br>
+  
+  <a href="https://github.com/andrefrsilva/sheets2network/raw/main/sheets2network_template.xlsx" target="_blank">Excel Template</a> 
+  <br>
+  <input accept=".xlsx, .xls" capture="" id="inputExcel" type="file" />
+  
+  <br>
+  <h3>Analytics</h3>
+  <button id="calculateNodeDegrees" class="button">Nodes' Degrees</button>
+  <button onclick="degree()">Info</button>
+  <canvas id="degreeChart"></canvas>
+  <div id="nodeDegreeResults" style="display:none;"></div>
+
+  <br><br>
+  <button id="calculateClusteringCoefficient" style="display:none;" class="button">Clustering Coefficient</button>
+  <button onclick="clusteringCoefficient()" style="display:none;">Info</button>
+  <canvas id="clusteringChart"></canvas>
+  <div id="clusteringResults" style="display:none;"></div>
+</div> <!-- end content-container -->
 
 <script>
-  
-  
-  document.getElementById('upload').addEventListener('change', function(e) {
-    let file = e.target.files[0];
-    let reader = new FileReader();
-
-    reader.onloadend = function() {
-        document.getElementById('ecg').src = reader.result;
-        document.getElementById('ecg2').src = reader.result;
-    }
-
-    if (file) {
-        reader.readAsDataURL(file);
-    }
-});
-
-  
-    // Duration of the ECG in seconds
-    const duration = 10;
-
-    // Array to store the click times
-    let clicks = [];
-
-    // Array to store the heart rates
-    let heartRates = [];
-
-    // Create a box plot using Chart.js
-    let boxPlot = new Chart(document.getElementById('boxPlot'), {
-        type: 'boxplot',
-        data: {
-            labels: [''],
-            datasets: [{
-                label: 'FC',
-                data: [heartRates],
-                backgroundColor: 'rgba(0, 0, 0, .5)',
-                borderColor: 'rgba(0, 0, 0, 1)',
-                borderWidth: 1
-            }]
-        },
-       options: {
-        responsive: true,
-        scales: {
-            y: {
-                beginAtZero: false
-            }
-        },
-        plugins: {
-            annotation: {
-                 annotations: [
-                    {
-                        type: 'box',
-                        yMin: 0,
-                        yMax: 60,
-                        backgroundColor: 'rgba(173, 216, 230, 0.3)', // light blue
-                      borderWidth: 0
-                    },
-                    {
-                        type: 'box',
-                        yMin: 60,
-                        yMax: 100,
-                        backgroundColor: 'rgba(144, 238, 144, 0.3)', // light green
-                      borderWidth: 0
-                    },
-                    {
-                        type: 'box',
-                        yMin: 100,
-                        yMax: 150,
-                        backgroundColor: 'rgba(255, 165, 0, 0.5)', // orange
-                      borderWidth: 0
-                    },
-                    {
-                        type: 'box',
-                        yMin: 150,
-                        yMax: Infinity,
-                        backgroundColor: 'rgba(255, 0, 0, 0.3)', // red
-                      borderWidth: 0
-                    }
-                ]
-            }
-        }
-    }
-    });
-
-    // Create the scatter plot
-  let scatterPlot = new Chart(document.getElementById('scatterPlot'), {
-  type: 'line',
-  data: {
-    datasets: [{
-      label: 'FC',
-      data: heartRates.map((hr, index) => ({ x: index, y: hr })),
-      fill: false,
-      backgroundColor: 'rgba(0, 0, 0, .5)',
-      borderColor: 'rgba(0, 0, 0, 1)',
-      tension: 0.1,
-      showLine: true
-    }]
-  },
-    
-  options: {
-        responsive: true,
-        scales: {
-            x: {
-                type: 'linear',
-                display: true,
-                title: {
-                    display: true,
-                    text: ''
-                }
-            },          
-            y: {
-                beginAtZero: false,
-                title: {
-                    display: true,
-                    text: 'BPM'
-                }
-            }
-        },
-        plugins: {
-            annotation: {
-                annotations: [
-                    {
-                        type: 'box',
-                        yMin: 0,
-                        yMax: 60,
-                        backgroundColor: 'rgba(173, 216, 230, 0.3)', // light blue
-                      borderWidth: 0
-                    },
-                    {
-                        type: 'box',
-                        yMin: 60,
-                        yMax: 100,
-                        backgroundColor: 'rgba(144, 238, 144, 0.3)', // light green
-                      borderWidth: 0
-                    },
-                  {
-                        type: 'box',
-                        yMin: 100,
-                        yMax: 150,
-                        backgroundColor: 'rgba(255, 165, 0, 0.5)', // orange
-                      borderWidth: 0
-                    },
-                    {
-                        type: 'box',
-                        yMin: 150,
-                        yMax: Infinity,
-                        backgroundColor: 'rgba(255, 0, 0, 0.3)', // red
-                      borderWidth: 0
-                    }
-                ]
-            }
-        }
-    }
-});
-
-  let currentAverageHeartRate = 0;
-
-    // Add click event to the image
-    document.getElementById('ecg').addEventListener('click', function(event) {
-        // Calculate the click position as a percentage of the total image width
-        const clickPosition = event.clientX / this.offsetWidth;
-
-        // Calculate the time of the click
-        const clickTime = clickPosition * duration;
-
-        // Add the click time to the array
-        clicks.push(clickTime);
-
-        // Sort the click times in ascending order
-        clicks.sort((a, b) => a - b);
-
-        // Calculate the intervals between clicks
-        let intervals = [];
-        for (let i = 1; i < clicks.length; i++) {
-            intervals.push(clicks[i] - clicks[i - 1]);
-        }
-
-        // Calculate the heart rates from the intervals
-        heartRates = intervals.map(interval => 60 / interval);
-
-        // Display the intervals
-        document.getElementById('intervals').textContent = heartRates.join(', ');
-
-        // Calculate min and max heart rate
-        const minHeartRate = Math.min(...heartRates);
-        const maxHeartRate = Math.max(...heartRates);
-
-        // Update y scale
-        boxPlot.options.scales.y.min = minHeartRate;
-        boxPlot.options.scales.y.max = maxHeartRate;
-
-        // Update the box plot
-        boxPlot.data.datasets[0].data = [heartRates];
-        boxPlot.update();
-      
-     // Create the marker
-var marker = document.createElement('div');
-marker.classList.add('marker');
-
-// Calculate the marker position
-var markerPosition = clickPosition * this.offsetWidth;
-
-// Adjust the marker position
-const adjustment = 2;  // Adjust this value to move the dot to the left/right
-markerPosition -= adjustment;
-
-// Set the marker position
-marker.style.left = markerPosition + 'px';
-
-// Add the marker to the container
-document.getElementById('markers-container').appendChild(marker);
-      
-// Calculate the average heart rate
-let sumHeartRates = heartRates.reduce((a, b) => a + b, 0);
-let averageHeartRate = Math.round(sumHeartRates / heartRates.length);
-      
-// Assign the value to the global variable
-currentAverageHeartRate = averageHeartRate;
-      
-// Get the td element
-let tdElement = document.getElementById('average-rate');
-            
- // Update the average heart rate in the table
-tdElement.textContent = averageHeartRate.toFixed(0);
-      
-      // Depending on the value of the average heart rate, color the background
-if (averageHeartRate < 60) {
-    tdElement.style.backgroundColor = '#89CFF0';
-} else if (averageHeartRate >= 60 && averageHeartRate < 100) {
-    tdElement.style.backgroundColor = '#AAFF00';
-} else if (averageHeartRate >= 100 && averageHeartRate < 150) {
-    tdElement.style.backgroundColor = 'orange';
-} else {
-    tdElement.style.backgroundColor = 'red';
-}
-      
-// Update the scatter plot
-scatterPlot.data.datasets[0].data = heartRates.map((hr, index) => ({ x: index, y: hr }));
-scatterPlot.update();
-      
-    });
-  
-  // Pasting from clipboard
-document.addEventListener('paste', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") === 0) {
-        handleFile(items[i].getAsFile());
-        break;
-      }
-    }
-}, false);
-
-  // File handling
-function handleFile(file) {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      document.getElementById('ecg').src = reader.result;
-      document.getElementById('ecg2').src = reader.result;
-    }
-    reader.readAsDataURL(file);
-}
-  
- const dropZone = document.querySelector('.drop-zone');
-
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-  });
-
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('dragover');
-  });
-
- // Drag and drop
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      let reader = new FileReader();
-      reader.onloadend = function() {
-        document.getElementById('ecg').src = reader.result;
-        document.getElementById('ecg2').src = reader.result; // add this line
-      }
-      reader.readAsDataURL(file);
-    }R
-});
-
-// Array to store the click times for the second image
-let clicks2 = [];
-
-// Array to store the heart rates for the second image
-let heartRates2 = [];
-
-// Add click event to the second image
-document.getElementById('ecg2').addEventListener('click', function(event) {
-    // Calculate the click position as a percentage of the total image width
-    const clickPosition = event.clientX / this.offsetWidth;
-
-    // Calculate the time of the click
-    const clickTime = clickPosition * duration;
-
-    // Add the click time to the array
-    clicks2.push(clickTime);
-
-    // Sort the click times in ascending order
-    clicks2.sort((a, b) => a - b);
-
-    // Calculate the intervals between clicks
-    let intervals = [];
-    for (let i = 1; i < clicks2.length; i += 2) {
-        intervals.push(clicks2[i] - clicks2[i - 1]);
-    }
-
-    // Calculate the heart rates from the intervals
-    heartRates2 = intervals.map(interval => 1000*interval);
-
-    // Display the intervals
-    document.getElementById('intervals').textContent = heartRates2.join(', ');
-
-    // Create the marker
-    var marker = document.createElement('div');
-    marker.classList.add('marker');
-
-    // Calculate the marker position
-    var markerPosition = clickPosition * this.offsetWidth;
-
-    // Adjust the marker position
-    const adjustment = 2;  // Adjust this value to move the dot to the left/right
-    markerPosition -= adjustment;
-
-    // Set the marker position
-    marker.style.left = markerPosition + 'px';
-
-    // Add the marker to the container
-    document.getElementById('markers-container2').appendChild(marker);
-
-    document.getElementById('ecg2').addEventListener('click', function(event) {
-    // ... existing code ...
-
-    // Update the box plot
-    boxPlot2.data.datasets[0].data = [heartRates2];
-    boxPlot2.update();
-
-    // Update the scatter plot
-    scatterPlot2.data.datasets[0].data = heartRates2.map((hr, index) => ({ x: index, y: hr }));
-    scatterPlot2.update();
-      
-      
-      
-      // Calculate PR
-let sumPR = heartRates2.reduce((a, b) => a + b, 0);
-let averagePR = Math.round(sumPR / heartRates2.length);
-      
-      // Get the td element
-let averagePRelement = document.getElementById('average-PR');
-            
- // Update the average heart rate in the table
-averagePRelement.textContent = averagePR.toFixed(0);
-      
-      // Depending on the value of the average heart rate, color the background
-if (averagePR < 120) {
-    averagePRelement.style.backgroundColor = '#89CFF0';
-} else if (averagePR >= 120 && averagePR < 200) {
-    averagePRelement.style.backgroundColor = '#AAFF00';
-} else {
-    averagePRelement.style.backgroundColor = 'red';
-}
-      
-      
-});
-  
-});
-  
-
-// Create a box plot using Chart.js for the second image
-let boxPlot2 = new Chart(document.getElementById('boxPlot2'), {
-    type: 'boxplot',
-    data: {
-        labels: [''],
-        datasets: [{
-            label: 'Intervalo PR',
-            data: [heartRates2],
-            backgroundColor: 'rgba(0, 0, 0, .5)',
-            borderColor: 'rgba(0, 0, 0, 1)',
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        scales: {
-            y: {
-                beginAtZero: false
-            }
-        },
-        plugins: {
-            annotation: {
-                 annotations: [
-                    {
-                        type: 'box',
-                        yMin: 0,
-                        yMax: 120,
-                        backgroundColor: 'rgba(173, 216, 230, 0.3)', // light blue
-                      borderWidth: 0
-                    },
-                    {
-                        type: 'box',
-                        yMin: 120,
-                        yMax: 200,
-                        backgroundColor: 'rgba(144, 238, 144, 0.3)', // light green
-                      borderWidth: 0
-                    },
-                    {
-                        type: 'box',
-                        yMin: 200,
-                        yMax: Infinity,
-                        backgroundColor: 'rgba(255, 0, 0, 0.3)', // red
-                      borderWidth: 0
-                    }
-                ]
-            }
-        }
-    }
-});
-
-// Create the scatter plot for the second image
-let scatterPlot2 = new Chart(document.getElementById('scatterPlot2'), {
-    type: 'line',
-    data: {
-        datasets: [{
-            label: 'Intervalo PR',
-            data: heartRates2.map((hr, index) => ({ x: index, y: hr })),
-            fill: false,
-            backgroundColor: 'rgba(0, 0, 0, .5)',
-            borderColor: 'rgba(0, 0, 0, 1)',
-            tension: 0.1,
-            showLine: true
-        }]
-    },
-    options: {
-        responsive: true,
-        scales: {
-            x: {
-                type: 'linear',
-                display: true,
-                title: {
-                    display: true,
-                    text: ''
-                }
-            },
-            y: {
-                beginAtZero: false,
-                title: {
-                    display: true,
-                    text: 'ms'
-                }
-            }
-        },
-        plugins: {
-            annotation: {
-                annotations: [
-                    {
-                        type: 'box',
-                        yMin: 0,
-                        yMax: 120,
-                        backgroundColor: 'rgba(173, 216, 230, 0.3)', // light blue
-                      borderWidth: 0
-                    },
-                    {
-                        type: 'box',
-                        yMin: 120,
-                        yMax: 200,
-                        backgroundColor: 'rgba(144, 238, 144, 0.3)', // light green
-                      borderWidth: 0
-                    },
-                    {
-                        type: 'box',
-                        yMin: 200,
-                        yMax: Infinity,
-                        backgroundColor: 'rgba(255, 0, 0, 0.3)', // red
-                      borderWidth: 0
-                    }
-                ]
-            }
-        }
-    }
-});
-
-  
-  // Get a reference to the table
-  const table = document.getElementById('newTable');
-
-  // Define the text for each row
- const rowTexts = [
-  'I',
-  'II',
-  'III',
-  'aVF',
-  'aVR',
-  'aVL',
-  'V1',
-  'V2',
-  'V3',
-  'V4',
-  'V5',
-  'V6'
-];
-
-  // Loop through the texts and create a row for each one
-  for (let text of rowTexts) {
-    const row = document.createElement('tr');
-    const tdText = document.createElement('td');
-    tdText.textContent = text;
-    row.appendChild(tdText);
-
-    // Add 4 columns with checkboxes
-    for (let i = 0; i < 5; i++) {
-      const tdToggle = document.createElement('td');
-      const label = document.createElement('label');
-      label.className = 'toggle-switch-label';
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      const span = document.createElement('span');
-      span.className = 'toggle-switch-slider';
-      
-      label.appendChild(input);
-      label.appendChild(span);
-      tdToggle.appendChild(label);
-      row.appendChild(tdToggle);
-    }
-
-    table.appendChild(row);
-  }
-  
-function calculateCardiacAxis() {
-    let leadI = parseFloat(document.getElementById('leadI').value);
-    let leadAVF = parseFloat(document.getElementById('leadAVF').value);
-
-    // atan2() takes into account the quadrant of the point in the Cartesian plane
-    let cardiacAxis = Math.atan2(leadI, leadAVF) * (180 / Math.PI);
-
-    // convert the range from [-180, 180] to [0, 360]
-    if (cardiacAxis < 0) {
-        cardiacAxis = 360 + cardiacAxis;
-    }
-
-    // as the coordinate system in canvas starts at the top left corner and is inverted on the y-axis,
-    // we need to invert our angle and also adjust it to start from the topmost point (which is normally at 90° in trigonometry)
-    cardiacAxis = (360 - (cardiacAxis - 90)) % 360;
-  
-    // Check if the axis is within normal range, if yes then color it green, else color it red
-let color;
-if (cardiacAxis >= -30 && cardiacAxis <= 90) {
-  color = 'green';
-} else if (cardiacAxis > 90 && cardiacAxis <= 100) {
-  color = 'orange';
-} else {
-  color = 'red';
-}
-document.getElementById('result').style.color = color;
-    
-    document.getElementById('result').innerHTML = cardiacAxis.toFixed(0) + "°" + "(" + -(360-cardiacAxis.toFixed(0)) + "°"  +")";
-
-    // Draw the axis on the circle
-    drawCardiacAxis(cardiacAxis);
-}
-
-function drawCardiacAxis(cardiacAxis) {
-    let canvas = document.getElementById('axisCanvas');
-    let ctx = canvas.getContext('2d');
-    let radius = 150;
-    let center = {x: 200, y: 200}; // center of the canvas
-
-    // Clear the canvas for fresh drawing
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw the circle
-    ctx.beginPath();
-    ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
-    ctx.stroke();
-
-    // Draw the tick mark for normal range
-    ctx.beginPath();
-    ctx.arc(center.x, center.y, radius, degreeToRadians(-30), degreeToRadians(90));
-    ctx.strokeStyle = "green";
-    ctx.lineWidth = 5;
-    ctx.stroke();
-
-    // Draw the cardiac axis
-    let cardiacAngle = degreeToRadians(cardiacAxis); // subtract 90 to make 0 degrees start at the right
-    ctx.beginPath();
-    ctx.moveTo(center.x, center.y);
-    ctx.lineTo(center.x + radius * Math.cos(cardiacAngle), center.y + radius * Math.sin(cardiacAngle));
-    ctx.strokeStyle = "red";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-   // Adding the degree labels
-ctx.font = '18px Arial';
-ctx.fillStyle = 'black';
-ctx.fillText('-30°', center.x + radius * Math.cos(degreeToRadians(-30 - 90 + 90)), center.y + radius * Math.sin(degreeToRadians(-30 - 90 + 90)));
-ctx.fillText('100°', center.x + radius * Math.cos(degreeToRadians(100 - 90 + 90)), center.y -10 + radius * Math.sin(degreeToRadians(100 - 90 + 90)));
-}
-
-function degreeToRadians(deg) {
-    return deg * (Math.PI / 180);
-}
-
-// Call calculateCardiacAxis whenever the input values change
-document.getElementById('leadI').addEventListener('change', calculateCardiacAxis);
-document.getElementById('leadAVF').addEventListener('change', calculateCardiacAxis);
-
-document.getElementById('recordTimeButton').addEventListener('click', function() {
-    const clickTime = new Date().getTime() / 1000; // Get the current time in seconds
-
-    // Add the click time to the array
-    clicks.push(clickTime);
-
-    // Sort the click times in ascending order
-    clicks.sort((a, b) => a - b);
-
-    // Calculate the intervals between clicks
-    let intervals = [];
-    for (let i = 1; i < clicks.length; i++) {
-        intervals.push(clicks[i] - clicks[i - 1]);
-    }
-
-    // Calculate the heart rates from the intervals
-    let heartRates = intervals.map(interval => 60 / interval);
-
-    // Display the intervals
-    document.getElementById('intervals').textContent = heartRates.join(', ');
-
-    // Calculate min and max heart rate
-    const minHeartRate = Math.min(...heartRates);
-    const maxHeartRate = Math.max(...heartRates);
-
-    // Update y scale
-    boxPlot.options.scales.y.min = minHeartRate;
-    boxPlot.options.scales.y.max = maxHeartRate;
-
-    // Update the box plot
-    boxPlot.data.datasets[0].data = [heartRates];
-    boxPlot.update();
-
-    // Calculate the average heart rate
-    let sumHeartRates = heartRates.reduce((a, b) => a + b, 0);
-    let averageHeartRate = Math.round(sumHeartRates / heartRates.length);
-
-    // Get the td element
-    let tdElement = document.getElementById('average-rate');
-
-    // Update the average heart rate in the table
-    tdElement.textContent = averageHeartRate.toFixed(0);
-
-    // Depending on the value of the average heart rate, color the background
-    if (averageHeartRate < 60) {
-        tdElement.style.backgroundColor = '#89CFF0';
-    } else if (averageHeartRate >= 60 && averageHeartRate < 100) {
-        tdElement.style.backgroundColor = '#AAFF00';
-    } else if (averageHeartRate >= 100 && averageHeartRate < 150) {
-        tdElement.style.backgroundColor = 'orange';
-    } else {
-        tdElement.style.backgroundColor = 'red';
-    }
-
-    // Update the scatter plot
-    scatterPlot.data.datasets[0].data = heartRates.map((hr, index) => ({ x: index, y: hr }));
-    scatterPlot.update();
-});
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  // Assign event listeners to the icons
-document.querySelectorAll('.tooltip-icon').forEach(icon => {
-    icon.addEventListener('click', function(event) {
-        event.stopPropagation(); // Prevent the event from bubbling up to the document
-        const imageUrl = this.getAttribute('data-tooltip');
-        showTooltip(imageUrl);
-    });
-});
-
-// Assign a click event to the entire document
-document.addEventListener('click', function() {
-    hideTooltip();
-});
-
-function showTooltip(imageUrl) {
-    let tooltip = document.querySelector('.tooltip');
-    if (!tooltip) {
-        tooltip = document.createElement('div');
-        tooltip.classList.add('tooltip');
-        document.body.appendChild(tooltip);
-    }
-    tooltip.innerHTML = `<img src="${imageUrl}" alt="Tooltip Image">`;
-    tooltip.style.display = 'block';
-}
-
-function hideTooltip() {
-    const tooltip = document.querySelector('.tooltip');
-    if (tooltip) {
-        tooltip.style.display = 'none';
-    }
-}
-
-// Get all special letter elements
-    var specialLetters = document.getElementsByTagName('special');
-
-    // Add the special-letter class to each special letter element
-    for (var i = 0; i < specialLetters.length; i++) {
-      specialLetters[i].classList.add('special-letter');
-    }
-  
-  document.addEventListener('DOMContentLoaded', function () {
-  var heartRateElement = document.getElementById("average-rate");
-  var toggleInputs = document.querySelectorAll('input.cardiac-toggle'); // selecione apenas os toggles com a classe 'cardiac-toggle'
-  var resultDiv = document.getElementById("resultrhythm");
-  var analyzeButton = document.getElementById("analyzeButton");
-
-  function updateAnalysis() {
-    //console log to debug
-        var heartRateText = heartRateElement.textContent.trim();
-    console.log("Heart rate text:", heartRateText);
-    
-    var heartRate = parseInt(heartRateElement.textContent.trim(), 10);
-    console.log("Parsed heart rate:", heartRate);
-    
-    var allTogglesOn = Array.from(toggleInputs).every(input => input.checked);
-    console.log("All toggles on:", allTogglesOn);
-    
-    var anyToggleOff = Array.from(toggleInputs).some(input => !input.checked);
-    console.log("Any toggle off:", anyToggleOff);
-    
-    var heartRate = parseInt(heartRateElement.textContent.trim(), 10);
-    var allTogglesOn = Array.from(toggleInputs).every(input => input.checked);
-    var anyToggleOff = Array.from(toggleInputs).some(input => !input.checked);
-
-    if (isNaN(heartRate)) {
-      resultDiv.innerText = "Ainda não temos uma frequência cardíaca válida.";
-      resultDiv.style.color = "black";
-      return;
-    }
-
-    if (heartRate > 60 && heartRate < 150 && allTogglesOn) {
-      resultDiv.innerText = "Ritmo sinusal";
-      resultDiv.style.color = "green";
-    } else if (heartRate >= 150 && allTogglesOn) {
-      resultDiv.innerText = "Taquicardia sinusal";
-      resultDiv.style.color = "orange";
-    } else if (heartRate <= 60 && allTogglesOn) {
-      resultDiv.innerText = "Bradicardia sinusal";
-      resultDiv.style.color = "orange";
-    } else if (heartRate >= 150 && anyToggleOff) {
-      resultDiv.innerText = "Taquicardia não sinusal";
-      resultDiv.style.color = "red";
-    } else if (heartRate <= 60 && anyToggleOff) {
-      resultDiv.innerText = "Bradicardia não sinusal";
-      resultDiv.style.color = "red";
-    } else if (heartRate > 60 && heartRate < 150 && anyToggleOff) {
-      resultDiv.innerText = "Arritmia";
-      resultDiv.style.color = "red";
-    }
+  /***************
+   * URL Table / localStorage
+   ***************/
+  function addShareButton(row) {
+      var shareCell = row.insertCell(-1);
+      var shareButton = document.createElement("button");
+      shareButton.textContent = "Share";
+      shareButton.className = "button";
+      shareButton.addEventListener("click", function() {
+          var urlInput = row.querySelector(".urlInput").value;
+          var baseUrl = 'https://www.medicinup.com/p/sheets2network.html?sheetsUrl=';
+          var fullUrl = baseUrl + encodeURIComponent(urlInput);
+          navigator.clipboard.writeText(fullUrl).then(() => {
+              alert("The URL was copied.");
+          }, (err) => {
+              console.error('Could not copy text: ', err);
+          });
+      });
+      shareCell.appendChild(shareButton);
   }
 
-  // Escuta o evento de clique no botão de análise
-  analyzeButton.addEventListener('click', updateAnalysis);
-});
+  function addRow(title = '', url = '') {
+      var table = document.getElementById("urlTable");
+      var row = table.insertRow(-1);
+      var titleCell = row.insertCell(0);
+      var urlCell = row.insertCell(1);
+      var actionCell = row.insertCell(2);
 
-let context;
-let oscillator;
-let gainNode;
-let isPlaying = false;
-let heartRateIndex = 0;
+      titleCell.innerHTML = `<input type="text" value="${title}" class="titleInput" style="width: 100%;">`;
+      urlCell.innerHTML = `<input type="text" value="${url}" class="urlInput" style="width: 100%;">`;
+      actionCell.innerHTML = `<button class="loadButton button" onclick="loadURL(this)">Load</button>`;
 
-function startBeeping() {
-    if (isPlaying) return;
+      var shareButton = document.createElement("button");
+      shareButton.className = "button";
+      shareButton.textContent = "Share";
+      shareButton.style.marginLeft = "10px";
+      shareButton.onclick = function() {
+          var urlInput = row.querySelector(".urlInput").value;
+          var baseUrl = 'https://www.medicinup.com/p/sheets2network.html?sheetsUrl=';
+          var fullUrl = baseUrl + encodeURIComponent(urlInput);
+          navigator.clipboard.writeText(fullUrl).then(() => {
+              alert("The URL was copied.");
+          }, (err) => {
+              console.error('Could not copy text: ', err);
+          });
+      };
+      actionCell.appendChild(shareButton);
 
-    if (heartRates.length === 0) {
-        alert("Ainda não temos a frequência cardíaca");
-        return;
-    }
-    
-    isPlaying = true;
+      var deleteButton = document.createElement("button");
+      deleteButton.className = "deleteButton button";
+      deleteButton.textContent = "x";
+      deleteButton.style.marginLeft = "10px"; 
+      deleteButton.onclick = function() {
+          deleteRow(this.parentNode.parentNode);
+      };
+      actionCell.appendChild(deleteButton);
 
-    // Initialize audio context
-    if (!context) {
-        context = new (window.AudioContext || window.webkitAudioContext)();
-    }
+      titleCell.querySelector('input').addEventListener('change', saveToStorage);
+      urlCell.querySelector('input').addEventListener('change', saveToStorage);
+  }
 
-    // Start playing the sequence
-    playNextBeep();
-}
+  function loadURL(btn) {
+      var url = btn.closest('tr').querySelector('.urlInput').value;
+      document.getElementById('dataURL').value = url;
+      document.getElementById('loadDataButton').click();
+  }
 
-function playNextBeep() {
-    if (!isPlaying) return; // Stop if the isPlaying flag is set to false
-    
-    const averageRate = heartRates[heartRateIndex];
-    const interval = (60 / averageRate) * 1000;
+  function deleteRow(btn) {
+      var row = btn.closest('tr');
+      row.parentNode.removeChild(row);
+      saveToStorage();
+  }
 
-    // Schedule the next beep
-    setTimeout(() => {
-        playBeep();
-        heartRateIndex = (heartRateIndex + 1) % heartRates.length; // Move to the next heart rate, wrap to the beginning if at the end
-        playNextBeep();
-    }, interval);
-}
+  function saveToStorage() {
+      var data = [];
+      var rows = document.getElementById("urlTable").rows;
+      for (var i = 1; i < rows.length; i++) {
+          var title = rows[i].cells[0].querySelector('input').value;
+          var url = rows[i].cells[1].querySelector('input').value;
+          data.push({title, url});
+      }
+      localStorage.setItem("urlData", JSON.stringify(data));
+  }
 
-function playBeep() {
-    if (useHeartbeatSound && heartbeatAudioBuffer) {
-        // Play heartbeat sound
-        const source = context.createBufferSource();
-        source.buffer = heartbeatAudioBuffer;
-        source.connect(context.destination);
-        source.start();
-    } else {
-        // Play beep sound (existing code)
-        oscillator = context.createOscillator();
-        gainNode = context.createGain();
+  function loadFromStorage() {
+      var stored = localStorage.getItem("urlData");
+      if(!stored) return;
+      var data = JSON.parse(stored);
+      data.forEach(function(item) {
+          addRow(item.title, item.url);
+      });
+  }
 
-        oscillator.frequency.setValueAtTime(544, context.currentTime); // 544Hz
-        oscillator.type = 'sine';
+  function resetData() {
+      localStorage.clear();
+      var table = document.getElementById("urlTable");
+      while(table.rows.length > 1) {
+        table.deleteRow(1);
+      }
+  }
 
-        // Set initial gain to 0 so we can fade in
-        gainNode.gain.setValueAtTime(0, context.currentTime);
+  function refreshPage() {
+      location.reload();
+  }
 
-        // Fade in
-        gainNode.gain.linearRampToValueAtTime(0.5, context.currentTime + 0.01); // 50% volume
+  // Download & Upload Table
+  function downloadUrlTable() {
+    let stored = localStorage.getItem("urlData");
+    if(!stored) stored="[]";
+    let blob = new Blob([stored], {type:"application/json"});
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href=url;
+    a.download="sheets2network_table.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  function uploadUrlTableFile(evt) {
+    let file=evt.target.files[0];
+    if(!file)return;
+    let reader=new FileReader();
+    reader.onload=function(e){
+      try {
+        let arr=JSON.parse(e.target.result);
+        resetData();
+        arr.forEach(item=>addRow(item.title,item.url));
+        saveToStorage();
+      } catch(e){
+        alert("Invalid JSON file.");
+      }
+    };
+    reader.readAsText(file);
+  }
 
-        // Fade out
-        gainNode.gain.linearRampToValueAtTime(0, context.currentTime + 0.09); // back to 0
+  /***************
+   * Analytics Helper Functions
+   ***************/
+  function degree() {
+      alert("The degree is simply the number of edges connected to a node.");
+  }
+  function clusteringCoefficient() {
+      alert("The clustering coefficient is a measure of the degree to which nodes in a graph tend to cluster together.");
+  }
+  function betweennessCentrality() {
+      alert("Betweenness centrality is the number of paths between two nodes that go through the node.");
+  }
+  function closenessCentrality() {
+      alert("Closeness centrality is a way of detecting nodes that spread information efficiently through a graph.");
+  }
 
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
+  function calculateNodeDegrees() {
+      let degrees = {};
+      nodes.forEach(node => {
+          let degree = edges.get({
+              filter: function(edge) {
+                  return edge.from === node.id || edge.to === node.id;
+              }
+          }).length;
+          degrees[node.id] = degree;
+      });
+      return degrees;
+  }
 
-        oscillator.start();
-        oscillator.stop(context.currentTime + 0.1); // Play the beep for 0.1 second
-    }
-}
+  function calculateClusteringCoefficient() {
+      let coefficients = {};
+      nodes.forEach(node => {
+          let neighbors = edges.get({
+              filter: function(edge) {
+                  return edge.from === node.id || edge.to === node.id;
+              }
+          }).map(edge => edge.from === node.id ? edge.to : edge.from);
+          let neighborCount = neighbors.length;
+          if (neighborCount > 1) {
+              let linkCount = 0;
+              for (let i = 0; i < neighborCount; i++) {
+                  for (let j = i + 1; j < neighborCount; j++) {
+                      if (edges.get({
+                          filter: function(edge) {
+                              return (edge.from === neighbors[i] && edge.to === neighbors[j]) || 
+                                     (edge.from === neighbors[j] && edge.to === neighbors[i]);
+                          }
+                      }).length > 0) {
+                          linkCount++;
+                      }
+                  }
+              }
+              let clustering = 2.0 * linkCount / (neighborCount * (neighborCount - 1));
+              coefficients[node.id] = clustering;
+          }
+      });
+      return coefficients;
+  }
 
-function stopBeeping() {
-    isPlaying = false;
-}
+  function updateResults(coefficients) {
+      let results = document.getElementById('clusteringResults');
+      let chartCanvas = document.getElementById('clusteringChart');
+      if (results.style.display === 'block') {
+          results.style.display = 'none';
+          chartCanvas.style.display = 'none';
+          return;
+      }
+      results.innerHTML = '';
+      let sortedNodes = Object.keys(coefficients).sort((a, b) => coefficients[b] - coefficients[a]);
+      let table = document.createElement('table');
+      let headers = ['Coefficient', 'Node'];
+      let headerRow = document.createElement('tr');
+      headers.forEach(headerText => {
+          let header = document.createElement('th');
+          header.textContent = headerText;
+          headerRow.appendChild(header);
+      });
+      table.appendChild(headerRow);
 
-  let useHeartbeatSound = false; // Variable to keep track of the current sound selection
-let heartbeatAudioBuffer; // To store the heartbeat sound buffer
+      sortedNodes.forEach(nodeId => {
+          let row = document.createElement('tr');
+          let coeffCell = document.createElement('td');
+          coeffCell.textContent = coefficients[nodeId].toFixed(3);
+          row.appendChild(coeffCell);
 
-// Function to toggle between beep and heartbeat sound
-function toggleSound() {
-    const toggleButton = document.getElementById("soundToggle");
-    useHeartbeatSound = toggleButton.checked;
-    
-    // Load the heartbeat sound if it's selected
-    if (useHeartbeatSound && !heartbeatAudioBuffer) {
-        loadHeartbeatSound();
-    }
-}
+          let nodeIdCell = document.createElement('td');
+          nodeIdCell.textContent = nodeId;
+          row.appendChild(nodeIdCell);
 
+          table.appendChild(row);
+      });
 
-// Function to load the heartbeat sound
-function loadHeartbeatSound() {
-    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-    const targetUrl = 'https://github.com/andrefrsilva/sheets2network/raw/main/Heartbeat_01.wav';
-    fetch(proxyUrl + targetUrl)
-        .then(response => response.arrayBuffer())
-        .then(arrayBuffer => context.decodeAudioData(arrayBuffer))
-        .then(audioBuffer => {
-            heartbeatAudioBuffer = audioBuffer;
-        });
-}
+      results.appendChild(table);
+      results.style.display = 'block';
+      chartCanvas.style.display = 'block';
+      drawClusteringChart(coefficients);
+  }
 
-  
-   // Define nodes and edges outside of DOMContentLoaded
-var nodes = null;
-var edges = null;
-    
-   document.addEventListener("DOMContentLoaded", function() {
-  nodes = new vis.DataSet([]);
-  edges = new vis.DataSet([]);
-          
-  var c_vein = "lightblue";
-  var c_artery = "red";
-  var c_other2 = "grey";
-     var c_organ = "orange";
-  
- 
-  let physics_var = false;
-  
-  var c_positive = "green";
-  var c_negative = "red";
-  var c_other3 = "grey";
+  document.getElementById("calculateClusteringCoefficient").addEventListener("click", function() {
+      let coefficients = calculateClusteringCoefficient();
+      updateResults(coefficients);
+  });
 
-  var nvalue50 = 100;
-  var nvalue40 = 40;
-  var nvalue30 = 25;
-  var nvalue20 = 20;
-  var nvalue10 = 10;
-  var nvalue5 = 5;
-  var nvalue2 = 4;
+  function drawClusteringChart(coefficients) {
+      let data = Object.values(coefficients);
+      if(!data.length) return;
+      let borderColor = 'rgba(255, 99, 132, 1)';
+      let borderWidth = 1;
+      let min = Math.min(...data);
+      let max = Math.max(...data);
+      let interval = (max - min) / 10;
+      let histogramData = {
+        labels: [],
+        datasets: [{
+          label: 'Clustering Coefficients',
+          data: [],
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderColor: borderColor,
+          borderWidth: borderWidth
+        }]
+      };
+      for (let i = min; i <= max; i += interval) {
+          let lowerBound = i.toFixed(2);
+          let upperBound = (i + interval).toFixed(2);
+          let label = `${lowerBound} - ${upperBound}`;
+          let count = data.filter(value => value >= i && value < (i + interval)).length;
+          histogramData.labels.push(label);
+          histogramData.datasets[0].data.push(count);
+      }
+      let histogramOptions = {
+        indexAxis: 'x',
+        elements: {
+          bar: { borderWidth: 2 }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Count' }
+          },
+          x: {
+            title: { display: true, text: 'Range' }
+          }
+        }
+      };
+      new Chart(document.getElementById('clusteringChart'), {
+        type: 'bar',
+        data: histogramData,
+        options: histogramOptions
+      });
+  }
 
-  var evalue50 = 150;
-  var evalue40 = 40;
-  var evalue30 = 30;
-  var evalue20 = 20;
-  var evalue10 = 10;
-  var evalue5 = 2;
-  var evalue2 = 1;
-  
-var nodes = new vis.DataSet([
-  
-    // organs, tissues, etc. 44_5
-  { id: 44_5_1, label: "(pulmões)", font: { size: nvalue20 }, value: nvalue50, color: c_organ},
-  
-   { id: 74_1, label: "(septo\ninterventricular)", font: { size: nvalue10 }, value: nvalue10, color: c_organ, fixed: true, x: -25, y: 50},
-   { id: 74_2, label: "(septo\nauriculoventricular)", font: { size: nvalue10 }, value: nvalue10, color: c_organ, fixed: true, x: -25, y: -25},
-    
-  { id: 72_1, label: "cava [S]", font: { size: nvalue20 }, value: nvalue20, color: c_vein},
-  { id: 72_2, label: "cava [I]", font: { size: nvalue20 }, value: nvalue20, color: c_vein},
-  
-  { id: 72_3, label: "tronco pulmonar", font: { size: nvalue20 }, value: nvalue20, color: c_vein},
-  { id: 72_4, label: "(4) _Vs pulmonares", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
-  
-  { id: 71_1, label: "ventrículo L", font: { size: nvalue20 }, value: nvalue50, color: 'brown', fixed: true, x: 50, y: 50},
-  { id: 71_2, label: "ventrículo R", font: { size: nvalue20 }, value: nvalue50, color: 'brown', fixed: true, x: -100, y: 50},
-  { id: 71_3, label: "aurícula L", font: { size: nvalue20 }, value: nvalue40, color: 'brown', fixed: true, x: 50, y: -100},
-  { id: 71_4, label: "aurícula R", font: { size: nvalue20 }, value: nvalue40, color: 'brown', fixed: true, x: -100, y: -100},
-    
-  { id: 70_0, label: "aorta", font: { size: nvalue40 }, value: nvalue40, color: c_artery},
-  { id: 70_0_1, label: "coronária R", font: { size: nvalue10 }, value: nvalue10, color: c_artery},
-  { id: 70_0_1_1, label: "marginal R", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
-  { id: 70_0_1_4, label: "ramo do nódulo\natrioventricular", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
-  { id: 70_0_1_2, label: "descendente [P]\ninterventricular/PDA", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
-  { id: 70_0_2, label: "coronária L", font: { size: nvalue10 }, value: nvalue10, color: c_artery},
-  { id: 70_0_2_1, label: "descendente [A]\ninterventricular/LAD", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
-  { id: 70_0_2_1_1, label: "diagonais (D1, D2, ...)", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
-  { id: 70_0_2_2, label: "circunflexa\natrioventricular/Cx", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
-  { id: 70_0_2_2_1, label: "marginais obtusas", font: { size: nvalue5 }, value: nvalue5, color: c_artery},
-  
-  { id: 70_1, label: "crossa da aorta", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
-  
-  { id: 70_1_1, label: "subclávia L", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
-  { id: 70_1_2, label: "carótida comum L", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
-  { id: 70_1_3, label: "tronco braquicefálico", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
-  { id: 70_1_3_1, label: "tiroideia ima", font: { size: nvalue10 }, value: nvalue10, color: c_artery},
-  
-  { id: 70_1_4, label: "carótida comum R", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
-  { id: 70_1_4_1, label: "carótida externa", font: { size: nvalue20 }, value: nvalue20, color: c_artery},
-  { id: 70_1_4_2_1, label: "(seio carotídeo - BP)", font: { size: nvalue20 }, value: nvalue20, color: c_other2},
-  { id: 70_1_4_2_2, label: "(corpo carotódeo - O2)", font: { size: nvalue20 }, value: nvalue20, color: c_other2},
-    
-]);
+  let degreeChart;
+  document.getElementById("calculateNodeDegrees").addEventListener("click", function() {
+      let degrees = calculateNodeDegrees();
+      let degreeCanvas = document.getElementById('degreeChart');
+      if (updateDegreeResults(degrees)) {
+          drawDegreeHistogram(degrees);
+      } else {
+          degreeCanvas.style.display = 'none';
+      }
+  });
 
-var edges = new vis.DataSet([
-    { from: 72_3, to: 44_5_1, arrows: "to", value: evalue10, color: c_vein},
-  { from: 44_5_1, to: 72_4, arrows: "to", value: evalue10, color: c_vein},
-  
-  /*
-   { from: 74_1, to: 71_1, dashes: true, value: evalue2, color: 'brown',},
-   { from: 74_1, to: 71_2, dashes: true, value: evalue2, color: 'brown',},
-  { from: 74_2, to: 71_4, dashes: true, value: evalue2, color: 'brown',},
-   { from: 74_2, to: 71_1, dashes: true, value: evalue2, color: 'brown',},
-  */
-  
-   { from: 70_0_1_1, to: 71_2, arrows: "to", value: evalue5, color: c_artery},
-   { from: 70_0_1, to: 71_4, arrows: "to", value: evalue5, color: c_artery},
-   { from: 70_0_1_2, to: 74_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_1_4, to: 74_2, arrows: "to", value: evalue5, color: c_artery},
-   { from: 70_0_2_1, to: 74_1, arrows: "to", value: evalue5, color: c_artery},
-   { from: 70_0_2_1_1, to: 71_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_2_2_1, to: 71_1, arrows: "to", value: evalue5, color: c_artery},
-   { from: 70_0_2_2, to: 71_1, arrows: "to", value: evalue5, color: c_artery},
-   { from: 70_0_2_2, to: 71_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_0_2_2, to: 70_0_1_2, dashes: true, value: evalue2, color: 'red', label: '~10%'},
-  
-  
-  { from: 70_1_4, to: 70_1_4_1, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_4, to: 70_1_4_2_1, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_4_2_1, to: 70_1_4_2_2, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_4_2_1, to: 70_1_4_3, arrows: "to", value: evalue10, color: c_artery},
-  
-  { from: 72_4, to: 71_3, arrows: "to", value: evalue10, color: c_artery},
-  
-  { from: 71_2, to: 72_3, arrows: "to", value: evalue10, color: c_vein},
-  { from: 72_1, to: 71_4, arrows: "to", value: evalue10, color: c_vein},
-  { from: 72_2, to: 71_4, arrows: "to", value: evalue10, color: c_vein},
-  
-  { from: 71_3, to: 71_1, arrows: "to", value: evalue10, color: c_artery},
-  { from: 71_4, to: 71_2, arrows: "to", value: evalue10, color: c_artery},
-  
-  { from: 71_1, to: 70_0, arrows: "to", value: evalue40, color: c_artery},
-  
-  { from: 70_0, to: 70_1, arrows: "to", value: evalue40, color: c_artery},
-  { from: 70_1, to: 70_2, arrows: "to", value: evalue40, color: c_artery},
-  { from: 70_2, to: 70_3, arrows: "to", value: evalue40, color: c_artery},
-  { from: 70_3, to: 70_4, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_4, to: 70_5, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_4, to: 70_6, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_5, to: 70_7, arrows: "to", value: evalue10, color: c_artery},
-  
-  { from: 70_1_5, to: 70_1_5_1, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_5, to: 70_1_5_2, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_5, to: 70_1_5_3, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_5, to: 70_1_5_4, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_5, to: 70_1_5_5, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_5, to: 70_1_5_6, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_5_3, to: 70_1_5_7, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_5_3, to: 70_1_5_3_1, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1, to: 70_1_1, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1, to: 70_1_2, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1, to: 70_1_3, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_3, to: 70_1_4, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_3, to: 70_1_5, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_3, to: 70_1_3_1, arrows: "to", value: evalue10, color: c_artery},
-  
-  
-  { from: 70_7, to: 70_8, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_8, to: 70_9, arrows: "to", value: evalue10, color: c_artery},
-  
-  { from: 70_8, to: 70_8_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_8, to: 70_8_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_8, to: 70_8_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_8, to: 70_8_4, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_9, to: 70_9_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_9, to: 70_9_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_9, to: 70_9_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_9, to: 70_9_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_9, to: 70_9_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_9, to: 70_9_6, arrows: "to", value: evalue10, color: c_artery},
-  
-  { from: 70_9_6, to: 70_9_6_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_9_6, to: 70_9_6_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_9_6, to: 70_9_6_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_9_6, to: 70_9_6_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_9_6, to: 70_9_6_5, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_8, to: 70_10, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_10, to: 70_10_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10, to: 70_10_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10, to: 70_10_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_10_3, to: 70_10_3_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_3, to: 70_10_3_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_3, to: 70_10_3_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_3, to: 70_10_3_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_3, to: 70_10_3_5, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_10, to: 70_10_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_4, to: 70_10_4_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_4, to: 70_10_4_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_4, to: 70_10_4_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_4, to: 70_10_4_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_4, to: 70_10_4_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_4, to: 70_10_4_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_10_4, to: 70_10_4_7, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_6, to: 70_1_5_6_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_7, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_8, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_9, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_10, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6, to: 70_1_5_6_11, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_6_11, to: 70_1_5_6_11_1, arrows: "to", value: evalue5, color: c_artery},
-    
-  { from: 70_1_5_7, to: 70_1_5_7_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2, to: 70_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2, to: 70_2_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_2, to: 70_1_5_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_2, to: 70_1_5_2_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_2, to: 70_1_5_2_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_2_1, to: 70_1_5_2_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_2_1, to: 70_1_5_2_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_2_1, to: 70_1_5_2_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_2_1, to: 70_1_5_2_1_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_2_1, to: 70_1_5_2_1_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_2_1, to: 70_1_5_2_1_6, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_5, to: 70_1_5_5_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5, to: 70_1_5_5_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5, to: 70_1_5_5_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5, to: 70_1_5_5_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5, to: 70_1_5_5_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5, to: 70_1_5_5_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5, to: 70_1_5_5_7, arrows: "to", value: evalue10, color: c_artery},
-  
-  { from: 70_1_5_5_2, to: 70_1_5_5_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_2, to: 70_1_5_5_2_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_2, to: 70_1_5_5_2_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_2, to: 70_1_5_5_2_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_6, to: 70_1_5_5_6_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_6, to: 70_1_5_5_6_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  
-  { from: 70_1_5_5_7, to: 70_1_5_5_7_1, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_1_5_5_7_1, to: 70_1_5_5_7_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_1, to: 70_1_5_5_7_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_1, to: 70_1_5_5_7_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_1, to: 70_1_5_5_7_1_4, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_5_7, to: 70_1_5_5_7_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7, to: 70_1_5_5_7_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7, to: 70_1_5_5_7_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_1, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_5_7, to: 70_1_5_5_7_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5_3, to: 70_1_5_5_7_5_3_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5_3, to: 70_1_5_5_7_5_3_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5_3, to: 70_1_5_5_7_5_3_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_5_7_4_1, to: 70_1_5_5_7_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_1_3, to: 70_1_5_5_7_4_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5_1, to: 70_1_5_5_7_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_3, to: 70_1_5_5_7_5_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5_2, to: 70_1_5_5_7_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_2, to: 70_1_5_5_7_5_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  
-  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_4, to: 70_1_5_5_7_4_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5, to: 70_1_5_5_7_5_7, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_5_7_4_2, to: 70_1_5_5_7_5_10_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5_4, to: 70_1_5_5_7_5_10_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_4_3, to: 70_1_5_5_7_5_10_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5_5, to: 70_1_5_5_7_5_10_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_5_7_4_4, to: 70_1_5_5_7_5_10_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5_6, to: 70_1_5_5_7_5_10_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_5_7_4_5, to: 70_1_5_5_7_5_10_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_5_7_5_7, to: 70_1_5_5_7_5_10_4, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_0, to: 70_0_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_1, to: 70_0_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_1, to: 70_0_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_1, to: 70_0_1_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0, to: 70_0_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_2, to: 70_0_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_2_1, to: 70_0_2_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_2, to: 70_0_2_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_2_2, to: 70_0_2_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_1_2, to: 70_0_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_0_2_1, to: 70_0_1_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_6_1, to: 70_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1, to: 70_1_5_6_1, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_5_7_1, to: 70_2_1, dashes: "true", value: evalue5, color: c_artery},
-  { from: 70_2_2, to: 70_2_1, dashes: "true", value: evalue5, color: c_artery},
-  
-  { from: 70_2_1, to: 70_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1, to: 70_2_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_1, to: 70_2_1_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_1, to: 70_2_1_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_1, to: 70_2_1_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_1, to: 70_2_1_1_4, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_2_1, to: 70_2_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_2, to: 70_2_1_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_2_1, to: 70_2_1_2_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_2_1, to: 70_2_1_2_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_2_1, to: 70_2_1_2_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_2, to: 70_2_1_2_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2_1_2, to: 70_2_1_2_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_2, to: 70_2_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2, to: 70_2_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2, to: 70_2_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2, to: 70_2_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_2, to: 70_2_7, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_1_3_3, to: 70_3_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_1, to: 70_3_1_3_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3, to: 70_3_1, arrows: "to", value: evalue10, color: c_artery},
-  { from: 70_3_1, to: 70_3_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1, to: 70_3_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1, to: 70_3_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_3, to: 70_3_1_3_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_3, to: 70_3_1_3_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_3, to: 70_3_1_3_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_3, to: 70_3_1_3_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_3, to: 70_3_1_3_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_3, to: 70_3_1_3_6, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3, to: 70_3_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3, to: 70_3_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_3, to: 70_3_3_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3, to: 70_3_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3, to: 70_3_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3, to: 70_3_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3, to: 70_3_7, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3, to: 70_3_8, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3, to: 70_3_9, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_9, to: 70_3_9_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_9_1, to: 70_3_9_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_9, to: 70_3_9_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_6_2_1, to: 70_6_7, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6_7, to: 70_6_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6_2, to: 70_3_8, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_8, to: 70_6_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_6, to: 70_6_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6, to: 70_6_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6_2, to: 70_6_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6, to: 70_6_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6, to: 70_6_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6, to: 70_6_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6, to: 70_6_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6_6, to: 70_6_6_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6_6_1, to: 70_6_6_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6, to: 70_6_7, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6_7, to: 70_6_7_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6, to: 70_6_8, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_6, to: 70_6_9, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_4, to: 70_3_4_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_4, to: 70_3_4_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_4, to: 70_3_4_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_4, to: 70_3_4_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_4, to: 70_3_4_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_6, to: 70_3_6_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_6, to: 70_3_6_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_6, to: 70_3_6_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_4_1, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_4_2, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_4_4, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_6_1, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_6_2, to: 70_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_6_1_1, to: 70_3_4_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_6_1_1, to: 70_3_4_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_6_1_1, to: 70_3_4_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_6_1_1, to: 70_3_6_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_6_1_1, to: 70_3_6_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_5, to: 70_5_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_5, to: 70_5_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_7, to: 70_7_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7, to: 70_7_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7, to: 70_7_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7, to: 70_7_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7_4, to: 70_7_4_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7_4, to: 70_7_4_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7_4, to: 70_7_4_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7_4_3, to: 70_7_4_3_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7_4, to: 70_7_4_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7_4_4, to: 70_7_4_4_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_7, to: 70_7_5, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_1_2, to: 70_3_1_2_1, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_1_2_1, to: 70_3_1_2_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_1_1, to: 70_3_1_2_1_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_1, to: 70_3_1_2_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_1, to: 70_3_1_2_1_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_1_2, to: 70_3_1_2_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_2, to: 70_3_1_2_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_2, to: 70_3_1_2_2_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_2, to: 70_3_1_2_2_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_1_3_2, to: 70_3_1_2_2_0, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_4_5, to: 70_3_1_2_2_0, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_2_3, to: 70_3_1_2_2_0, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_2_0, to: 70_3_1_3_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_2_0, to: 70_3_4_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_2_0, to: 70_3_1_2_2_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_1_2_1_3, to: 70_3_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_1, to: 70_3_1_2_1_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_3_1_2_2_2, to: 70_3_1_2_2_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_2_2_2_1, to: 70_3_1_3_4, label: "Barkow", arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_3_1_3_4, to: 70_3_1_2_2_2_1, arrows: "to", value: evalue5, color: c_artery},
-  
-  
-  { from: 70_1_4_3, to: 70_1_4_3_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_1, to: 70_1_4_3_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_2, to: 70_1_4_3_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_2, to: 70_1_4_3_2_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_2, to: 70_1_4_3_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_3, to: 70_1_4_3_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4, to: 70_1_4_3_4_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4_1, to: 70_1_4_3_4_1_5, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_4_3_4, to: 70_1_4_3_4_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4, to: 70_1_4_3_4_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4_3, to: 70_1_4_3_4_3_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4_3, to: 70_1_4_3_4_3_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_4_3, to: 70_1_4_3_4_3_3, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_4_3_4, to: 70_1_4_3_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_5, to: 70_1_4_3_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6, to: 70_1_4_3_6_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_7, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_8, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1, to: 70_1_4_3_6_1_9, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_4_3_6, to: 70_1_4_3_6_2, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_4_3_6, to: 70_1_4_3_7, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_7, to: 70_1_4_3_7_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_7, to: 70_1_4_3_7_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_7, to: 70_1_4_3_7_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_7, to: 70_1_4_3_7_4, arrows: "to", value: evalue5, color: c_artery},
-  
-  
-  { from: 70_1_4_2_1_8_7, to: 70_1_4_3_6_1_9, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1_9, to: 70_1_4_2_1_8_7, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_8_7, to: 70_1_4_3_6_1_7, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_3_6_1_7, to: 70_1_4_2_1_8_7, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_4_1, to: 70_1_4_2_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_1, to: 70_1_4_2_1_1_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_1, to: 70_1_4_2_1_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_1, to: 70_1_4_2_1_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_1, to: 70_1_4_2_1_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_2, to: 70_1_4_2_1_2_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_1, to: 70_1_4_2_1_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_6, label: "terminal", rrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_3, to: 70_1_4_2_1_3_7, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_1, to: 70_1_4_2_1_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_7, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_4, to: 70_1_4_2_1_4_8, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_1, to: 70_1_4_2_1_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_5, to: 70_1_4_2_1_5_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_5, to: 70_1_4_2_1_5_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_5, to: 70_1_4_2_1_5_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_5, to: 70_1_4_2_1_5_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_1, to: 70_1_4_2_1_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_6, to: 70_1_4_2_1_6_5, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_1, to: 70_1_4_2_1_7, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_4_1, to: 70_1_4_2_1_8, label: "terminal", arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_2, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_3, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_4, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_5, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_6, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_4_2_1_8, to: 70_1_4_2_1_8_7, arrows: "to", value: evalue5, color: c_artery},
-  
-  { from: 70_1_4_2_1_6_5, to: 70_1_5_2_1, arrows: "to", value: evalue5, color: c_artery},
-  { from: 70_1_5_2_1, to: 70_1_4_2_1_6_5, arrows: "to", value: evalue5, color: c_artery},
-  
-]);
+  function updateDegreeResults(degrees) {
+      let results = document.getElementById('nodeDegreeResults');
+      let chartCanvas = document.getElementById('degreeChart');
+      if (results.style.display === 'block') {
+          results.style.display = 'none';
+          chartCanvas.style.display = 'none';
+          if (degreeChart) {
+              degreeChart.destroy();
+              degreeChart = null;
+          }
+          return false;
+      }
+      results.innerHTML = '';
+      let sortedNodes = Object.keys(degrees).sort((a, b) => degrees[b] - degrees[a]);
+      let table = document.createElement('table');
+      let headers = ['Degree', 'Node'];
+      let headerRow = document.createElement('tr');
+      headers.forEach(headerText => {
+          let header = document.createElement('th');
+          header.textContent = headerText;
+          headerRow.appendChild(header);
+      });
+      table.appendChild(headerRow);
 
-  // create a network
+      sortedNodes.forEach(nodeId => {
+          let row = document.createElement('tr');
+          let degreeCell = document.createElement('td');
+          degreeCell.textContent = degrees[nodeId];
+          row.appendChild(degreeCell);
+
+          let nodeIdCell = document.createElement('td');
+          nodeIdCell.textContent = nodeId;
+          row.appendChild(nodeIdCell);
+
+          table.appendChild(row);
+      });
+
+      results.appendChild(table);
+      results.style.display = 'block';
+      chartCanvas.style.display = 'block';
+      return true;
+  }
+
+  function drawDegreeHistogram(degrees) {
+      let totalDegrees = Object.values(degrees).length;
+      let degreePercentages = {};
+      Object.values(degrees).forEach(d => {
+          degreePercentages[d] = (degreePercentages[d] || 0) + (1 / totalDegrees * 100);
+      });
+      let labels = Object.keys(degreePercentages);
+      let data = Object.values(degreePercentages);
+      if (degreeChart) {
+          degreeChart.destroy();
+          degreeChart = null;
+      }
+      let ctx = document.getElementById('degreeChart');
+      ctx.style.display = 'block';
+      degreeChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+              labels: labels,
+              datasets: [{
+                  label: 'Degree Distribution (%)',
+                  data: data,
+                  backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                  borderColor: 'rgba(75, 192, 192, 1)',
+                  borderWidth: 1
+              }]
+          },
+          options: {
+              scales: {
+                  x: {
+                      title: { display: true, text: 'Degree' }
+                  },
+                  y: {
+                      title: { display: true, text: 'Percentage' },
+                      ticks: {
+                          callback: function(value) { return value + '%'; }
+                      }
+                  }
+              }
+          }
+      });
+  }
+
+  /***************
+   * Create the Network
+   ***************/
   var container = document.getElementById("mynetwork");
-  var data = {
-    nodes: nodes,
-    edges: edges,
-  };
- var options = {
-    nodes: {
-      shape: "dot",
-      size: 16,
-    },
-    layout: {
-      randomSeed: 100,
-    },
+  var nodes = new vis.DataSet([]);
+  var edges = new vis.DataSet([]);
+  var adjacencyList={};
+  var options = {
+    layout: { randomSeed: 2 },
     physics: {
       enabled: true,
       solver: "barnesHut",
-    // 'forceAtlas2Based', "repulsion", "barnesHut", "hierarchicalRepulsion"
-    barnesHut: {
-      gravitationalConstant: -2000,
-      centralGravity: 0.0,
-      springLength: 100,
-      springConstant: 0.04,
-      damping: 0.09,
-      avoidOverlap: 0.5
-    },
-      maxVelocity: 146,      
+      barnesHut: {
+        gravitationalConstant: -8000,
+        springLength: 50,
+        centralGravity: 0.01,
+      },
+      maxVelocity: 135,
       timestep: 0.35,
-      
       stabilization: {
-      enabled: true,
-      iterations: 1000,
-      updateInterval: 1,
-      onlyDynamicEdges: false,
-      fit: true
+        enabled: true,
+        iterations: 600,
+        updateInterval: 10,
+        onlyDynamicEdges: false,
+        fit: true
+      }
     },
-      repulsion: {
-      nodeDistance: 50 // Put more distance between the nodes.
+    nodes: {
+      shape: "dot",
+      scaling: {
+        customScalingFunction: function (min, max, total, value) {
+          return value / total;
+        },
+        min: 5,
+        max: 50,
+      },
     },
-      
+    edges: {
+      color: { inherit: false },
+      width: 1,    
+      length: 100, 
+      smooth: { enabled: false, type: 'dynamic' },
     },
   };
+  var network = new vis.Network(container, {nodes:nodes, edges:edges}, options);
 
-  var network = new vis.Network(container, data, options);
-     
-  document.getElementById("physicsCheck").addEventListener("change", function() {
-        options.physics = this.checked; // Toggle physics
-        network.setOptions(options); // Update network options
-        network.redraw(); // Redraw network
-      });     
-  
-  // Run physics once to space out the nodes.
-     network.stabilize();
-
-     function addChildNodes(nodesToUpdate, node){
-  edges.forEach(edge => {
-    if (edge.from === node.id && nodes.get(edge.to) && !edge.dashes) {
-      let childNode = nodesToUpdate.find(node => node.id === edge.to);
-      if (childNode && childNode.hidden) {
-        childNode.hidden = false;
-        addChildNodes(nodesToUpdate, childNode);
-      }
+  // Edges color toggling
+  document.getElementById("edgesColorCheckbox").addEventListener("change", function() {
+    if(this.checked) {
+      edges.forEach(function(e) {
+        edges.update({ id: e.id, color: e.originalColor || 'gray' });
+      });
+    } else {
+      edges.forEach(function(e) {
+        edges.update({ id: e.id, color: 'gray' });
+      });
     }
   });
-}
+  // Physics toggle
+  document.getElementById("physicsCheck").addEventListener("change", function() {
+    options.physics.enabled = this.checked;
+    network.setOptions(options);
+    network.redraw();
+  });
+  // Curved edges toggle
+  document.getElementById("curvedEdgesCheckbox").addEventListener("change", function () {
+    options.edges.smooth.enabled = this.checked;
+    network.setOptions(options);
+    network.redraw();
+  });
 
-network.on('selectNode', function (properties) {
-  let nodesToUpdate = [];
-  if(properties.nodes.length === 0){
-    nodes.forEach(node => {
+  // Node selection => show/hide descendants
+  network.on('selectNode', function (properties) {
+    let seeAllDescendants = document.getElementById('seeAllDescendantsCheckbox').checked;
+    let nodesToUpdate = [];
+    let allNodes = nodes.get();
+    // Hide all except selected
+    allNodes.forEach(node => {
+      if (properties.nodes.includes(node.id)) {
+        nodesToUpdate.push({ id: node.id, hidden: false, color: node.color });
+      } else {
+        nodesToUpdate.push({ id: node.id, hidden: true });
+      }
+    });
+    // Recursively add child nodes if seeAllDescendants
+    const addChildNodes = (nodeId, nodesMap, recursive = true) => {
+      let connectedEdges = edges.get({ filter: function(edge){ return edge.from === nodeId; } });
+      connectedEdges.forEach((edge) => {
+        let childId = edge.to;
+        let childNode = nodesMap.find(n => n.id === childId);
+        if(childNode && childNode.hidden) {
+          childNode.hidden = false;
+          childNode.color = nodes.get(childId).color; 
+          if(recursive) {
+            addChildNodes(childId, nodesMap);
+          }
+        }
+      });
+    };
+    properties.nodes.forEach(nodeId => {
+      addChildNodes(nodeId, nodesToUpdate, seeAllDescendants);
+    });
+    nodes.update(nodesToUpdate);
+  });
+  network.on('deselectNode', function (properties) {
+    let nodesToUpdate = [];
+    let allNodes = nodes.get();
+    allNodes.forEach(node => {
       if(node.hidden){ 
-        nodesToUpdate.push({id:node.id, hidden: false});
+        nodesToUpdate.push({ id: node.id, hidden: false, color: node.color });
       }
     });
     nodes.update(nodesToUpdate);
-    return;
-  }
-
-  nodes.forEach(node => {
-    nodesToUpdate.push({id:node.id, hidden: true});
   });
 
-  properties.nodes.forEach(nodeId => {
-    let node = nodesToUpdate.find(node => node.id === nodeId);
-    node.hidden = false;
-    addChildNodes(nodesToUpdate, node);
-  }); 
-
-  nodes.update(nodesToUpdate);
-});
-
-network.on('deselectNode', function (properties) {
-  let nodesToUpdate = [];
-  nodes.forEach(node => {
-    if(node.hidden){ 
-      nodesToUpdate.push({id:node.id, hidden: false});
+  // Fullscreen
+  function enterFullscreen(element) {
+    if (element.requestFullscreen) {
+      element.requestFullscreen();
+    } else if (element.mozRequestFullScreen) {
+      element.mozRequestFullScreen();
+    } else if (element.webkitRequestFullscreen) {
+      element.webkitRequestFullscreen();
+    } else if (element.msRequestFullscreen) {
+      element.msRequestFullscreen();
+    }
+  }
+  function exitFullscreen() {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.mozCancelFullScreen) {
+      document.mozCancelFullScreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen();
+    }
+  }
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement || 
+              document.mozFullScreenElement || document.msFullscreenElement);
+  }
+  document.getElementById("toggleFullscreen").addEventListener("click", function() {
+    if(isFullscreen()) {
+      exitFullscreen();
+    } else {
+      enterFullscreen(container);
     }
   });
-  nodes.update(nodesToUpdate);
-});
 
-      function enterFullscreen(element) {
-        if (element.requestFullscreen) {
-          element.requestFullscreen();
-        } else if (element.mozRequestFullScreen) {
-          element.mozRequestFullScreen();
-        } else if (element.webkitRequestFullscreen) {
-          element.webkitRequestFullscreen();
-        } else if (element.msRequestFullscreen) {
-          element.msRequestFullscreen();
-        }
-      }
-
-      function exitFullscreen() {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        } else if (document.mozCancelFullScreen) {
-          document.mozCancelFullScreen();
-        } else if (document.webkitExitFullscreen) {
-          document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-          document.msExitFullscreen();
-        }
-      }
-
-      function isFullscreen() {
-        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-      }
-
-      document.getElementById("toggleFullscreen").addEventListener("click", function() {
-        if (isFullscreen()) {
-          exitFullscreen();
-        } else {
-          enterFullscreen(container);
-        }
-      });     
-      
+  // Group Toggles
+  var groupFilters = {};
+  function renderGroupToggles() {
+    var toggleContainer = document.getElementById("groupToggles");
+    toggleContainer.innerHTML = "";
+    Object.keys(groupFilters).forEach(function(group) {
+      var btn = document.createElement("button");
+      btn.innerText = group;
+      btn.classList.add("toggleBtn");
+      if(!groupFilters[group]) btn.classList.add("off");
+      btn.onclick = function() {
+        groupFilters[group] = !groupFilters[group];
+        btn.classList.toggle("off", !groupFilters[group]);
+        updateNetworkVisibility();
+      };
+      toggleContainer.appendChild(btn);
     });
-  
-  function togglePhysics() {
-    var physicsEnabled = document.getElementById('physicsCheck').checked;
-    // Do something with the physicsEnabled variable
-}
+  }
+  function updateNetworkVisibility() {
+    nodes.forEach(function(node) {
+      let hide = node.group && !groupFilters[node.group];
+      nodes.update({ id: node.id, hidden: hide, color: node.color });
+    });
+    edges.forEach(function(edge) {
+      let fromNode = nodes.get(edge.from);
+      let toNode = nodes.get(edge.to);
+      edges.update({ id: edge.id, hidden: (fromNode.hidden || toNode.hidden) });
+    });
+  }
 
-  
-  </script>
+  // Color Grading
+  var sortColumns = [];
+  var currentColorGrading = null;
+  function renderColorGradingToggles() {
+    var container = document.getElementById("colorGradingToggles");
+    container.innerHTML = "";
+    if(sortColumns.length === 0) return;
 
+    var label = document.createElement("span");
+    label.style.fontWeight = "bold";
+    label.innerText = "Color Grading: ";
+    container.appendChild(label);
+
+    sortColumns.forEach(function(colName) {
+      var displayName = colName.replace(/^sort_/, "");
+      var btn = document.createElement("button");
+      btn.classList.add("toggleBtn");
+      if(currentColorGrading !== colName) btn.classList.add("off");
+      btn.innerText = displayName;
+      btn.onclick = function() {
+        toggleColorGrading(colName);
+        var siblings = container.querySelectorAll(".toggleBtn");
+        siblings.forEach(s => s.classList.add("off"));
+        if(currentColorGrading === colName) {
+          btn.classList.remove("off");
+        } else {
+          btn.classList.add("off");
+        }
+        buildKanban();
+      };
+      container.appendChild(btn);
+    });
+  }
+  function toggleColorGrading(colName) {
+    if(currentColorGrading === colName) {
+      resetNodeColors();
+      currentColorGrading = null;
+    } else {
+      applyColorGrading(colName);
+      currentColorGrading = colName;
+    }
+  }
+  function resetNodeColors() {
+    nodes.forEach(n => {
+      nodes.update({ id:n.id, color:n.originalColor });
+    });
+  }
+  var negativeGradient = generateGradient("#0000FF","#000000",10);
+  var positiveGradient = generateGradient("#000000","#FF0000",10);
+
+  function applyColorGrading(colName) {
+    let minVal=Infinity, maxVal=-Infinity;
+    let numericValues=[];
+    nodes.forEach(n=>{
+      let val=(n.sortData && typeof n.sortData[colName]==='number')? n.sortData[colName]: null;
+      if(val!==null && !isNaN(val)) numericValues.push(val);
+    });
+    if(numericValues.length>0) {
+      minVal=Math.min(...numericValues);
+      maxVal=Math.max(...numericValues);
+    } else return;
+
+    nodes.forEach(n=>{
+      let val=(n.sortData && typeof n.sortData[colName]==='number')? n.sortData[colName]: null;
+      let c=getGradedColor(val,minVal,maxVal);
+      nodes.update({ id:n.id, color:c });
+    });
+  }
+  function getGradedColor(value,minVal,maxVal){
+    if(value===null||isNaN(value)) return "#808080";
+    if(minVal>=0){
+      let steps=positiveGradient.length;
+      if(minVal===maxVal) return positiveGradient[steps-1];
+      let frac=(value-minVal)/(maxVal-minVal);
+      let idx=Math.round(frac*(steps-1));
+      return positiveGradient[idx];
+    }
+    if(maxVal<=0){
+      let steps=negativeGradient.length;
+      if(minVal===maxVal) return negativeGradient[0];
+      let frac=(value-minVal)/(maxVal-minVal);
+      let idx=Math.round(frac*(steps-1));
+      if(idx<0) idx=0;
+      if(idx>steps-1) idx=steps-1;
+      return negativeGradient[idx];
+    }
+    if(value<0){
+      let steps=negativeGradient.length;
+      let negRange=Math.abs(minVal);
+      let frac=(value-minVal)/negRange;
+      let idx=Math.round(frac*(steps-1));
+      if(idx<0) idx=0;
+      if(idx>steps-1) idx=steps-1;
+      return negativeGradient[idx];
+    } else if(value>0){
+      let steps=positiveGradient.length;
+      let posRange=maxVal;
+      let frac=value/posRange;
+      let idx=Math.round(frac*(steps-1));
+      if(idx<0) idx=0;
+      if(idx>steps-1) idx=steps-1;
+      return positiveGradient[idx];
+    } else {
+      return "#000000";
+    }
+  }
+  function generateGradient(startColor,endColor,steps){
+    let start=hexToRgb(startColor), end=hexToRgb(endColor);
+    let arr=[];
+    for(let i=0;i<steps;i++){
+      let t=i/(steps-1);
+      let r=Math.round(start.r+t*(end.r-start.r));
+      let g=Math.round(start.g+t*(end.g-start.g));
+      let b=Math.round(start.b+t*(end.b-start.b));
+      arr.push(rgbToHex(r,g,b));
+    }
+    return arr;
+  }
+  function hexToRgb(hex){
+    hex=hex.replace(/^#/,'');
+    if(hex.length===3){
+      hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+    }
+    let num=parseInt(hex,16);
+    return{ r:(num>>16)&255,g:(num>>8)&255,b:num&255};
+  }
+  function rgbToHex(r,g,b){
+    return"#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1).toUpperCase();
+  }
+
+  /***************
+   * Kanban Board + (i) icon => open modal
+   ***************/
+  var kanbanValues=[];
+  var columnColors={}; 
+  function buildKanban(){
+    var kanbanContainer=document.getElementById("kanbanContainer");
+    var kanbanBoard=document.getElementById("kanbanBoard");
+    kanbanBoard.innerHTML="";
+    if(kanbanValues.length===0){
+      kanbanContainer.style.display="none";
+      return;
+    }
+    kanbanContainer.style.display="block";
+
+    kanbanValues.forEach(kv=>{
+      if(!columnColors[kv]){
+        columnColors[kv]=generatePastelColor();
+      }
+      var colDiv=document.createElement("div");
+      colDiv.className="kanban-column";
+      colDiv.style.backgroundColor=columnColors[kv];
+
+      var titleEl=document.createElement("div");
+      titleEl.className="kanban-column-title";
+      titleEl.innerText=kv;
+      colDiv.appendChild(titleEl);
+
+      var primarySortCol=(sortColumns.length>0)?sortColumns[0]:null;
+      var nodeIds=nodes.getIds().filter(id=>nodes.get(id).kanbanValue===kv);
+      // sort descending if numeric
+      nodeIds.sort((a,b)=>{
+        let nA=nodes.get(a),nB=nodes.get(b);
+        let vA=(primarySortCol && nA.sortData)?nA.sortData[primarySortCol]:null;
+        let vB=(primarySortCol && nB.sortData)?nB.sortData[primarySortCol]:null;
+        if(!vA)vA=0;if(!vB)vB=0;
+        // descending
+        if(vB!==vA)return vB-vA;
+        return(nA.label||"").localeCompare(nB.label||"");
+      });
+
+      nodeIds.forEach(nid=>{
+        let n=nodes.get(nid);
+        var cardDiv=document.createElement("div");
+        cardDiv.className="kanban-card";
+        cardDiv.style.backgroundColor=n.color;
+        cardDiv.innerText=n.label||nid;
+
+        // If there's a comment, show the (i) icon in top-right corner
+        if(n.title){
+          let icon=document.createElement("div");
+          icon.className="kanban-info-icon";
+          icon.textContent="i";
+          icon.addEventListener("click",function(ev){
+            ev.stopPropagation(); // don't let the card's click happen
+            openKanbanCommentModal(n.title);
+          });
+          cardDiv.appendChild(icon);
+        }
+        colDiv.appendChild(cardDiv);
+      });
+      kanbanBoard.appendChild(colDiv);
+    });
+  }
+
+  // Generate a random pastel color for each column
+  function generatePastelColor(){
+    let r=200+Math.round(Math.random()*55);
+    let g=200+Math.round(Math.random()*55);
+    let b=200+Math.round(Math.random()*55);
+    return`rgb(${r},${g},${b})`;
+  }
+
+  // Kanban comment modal logic
+  function openKanbanCommentModal(txt){
+    document.getElementById("kanbanCommentModalContent").innerText=txt;
+    document.getElementById("kanbanCommentModalOverlay").style.display='block';
+  }
+  function closeKanbanCommentModal(){
+    document.getElementById("kanbanCommentModalOverlay").style.display='none';
+  }
+  function maybeCloseKanbanCommentModal(e){
+    if(e.target.id==='kanbanCommentModalOverlay'){
+      closeKanbanCommentModal();
+    }
+  }
+
+  /***************
+   * BFS Path-Finding (Directional) + Edge Thickness
+   ***************/
+  function findPath() {
+    // restore edges to original thickness
+    edges.forEach(e=>{
+      edges.update({ id:e.id, width:(typeof e.width==='number'?e.width:1) });
+    });
+    // hide path result
+    document.getElementById('pathResult').style.display='none';
+    document.getElementById('pathList').innerHTML='';
+
+    let fromId = document.getElementById('pathFrom').value;
+    let toId   = document.getElementById('pathTo').value;
+    if(!fromId||!toId){
+      alert("Please select 'From' and 'To' nodes.");
+      return;
+    }
+    if(fromId===toId){
+      alert("They're the same node!");
+      return;
+    }
+    let path = bfsDirectionalPath(fromId,toId);
+    if(!path){
+      document.getElementById('pathResult').style.display='block';
+      document.getElementById('pathList').innerHTML='<li>No path found.</li>';
+      return;
+    }
+    // set all edges thickness=1
+    edges.forEach(e=>{
+      edges.update({ id:e.id, width:1 });
+    });
+    // highlight path edges => thickness=3
+    for(let i=0;i<path.length-1;i++){
+      let a=path[i], b=path[i+1];
+      let match=edges.getIds({
+        filter:(ed)=>(ed.from===a && ed.to===b)||(ed.from===b && ed.to===a)
+      });
+      if(match.length>0){
+        edges.update({ id: match[0], width: 13 });
+      }
+    }
+    // zoom
+    network.fit({ nodes: path, animation:{ duration:600, easingFunction:"easeInOutQuad" }});
+    // show path
+    document.getElementById('pathResult').style.display='block';
+    let listEl=document.getElementById('pathList');
+    path.forEach(nid=>{
+      let n=nodes.get(nid);
+      let li=document.createElement('li');
+      li.textContent=(n && n.label)? n.label : nid;
+      listEl.appendChild(li);
+    });
+  }
+
+  function bfsDirectionalPath(startId, goalId) {
+    let visited=new Set();
+    let queue=[startId];
+    let parent={};
+    visited.add(startId);
+    while(queue.length>0){
+      let current=queue.shift();
+      if(current===goalId){
+        let route=[];
+        let tmp=goalId;
+        while(tmp!==undefined){
+          route.unshift(tmp);
+          tmp=parent[tmp];
+        }
+        return route;
+      }
+      let neighbors=adjacencyList[current]||[];
+      for(let nb of neighbors){
+        if(!visited.has(nb)){
+          visited.add(nb);
+          parent[nb]=current;
+          queue.push(nb);
+        }
+      }
+    }
+    return null;
+  }
+
+  function closePathResult(){
+    document.getElementById('pathResult').style.display='none';
+    document.getElementById('pathList').innerHTML='';
+  }
+
+  // For the search modals
+  function openSearchModal(mode){
+    if(mode==='from'){
+      document.getElementById('searchModalFrom').style.display='block';
+      filterSearch('from');
+    } else {
+      document.getElementById('searchModalTo').style.display='block';
+      filterSearch('to');
+    }
+  }
+  function closeSearchModal(mode){
+    if(mode==='from'){
+      document.getElementById('searchModalFrom').style.display='none';
+    } else {
+      document.getElementById('searchModalTo').style.display='none';
+    }
+  }
+  function maybeCloseSearchModal(e, mode){
+    if(mode==='from' && e.target.id==='searchModalFrom'){
+      closeSearchModal('from');
+    }
+    if(mode==='to' && e.target.id==='searchModalTo'){
+      closeSearchModal('to');
+    }
+  }
+  function filterSearch(mode){
+    let inputEl=(mode==='from')?document.getElementById('searchInputFrom'):document.getElementById('searchInputTo');
+    let listEl =(mode==='from')?document.getElementById('searchResultsFrom'):document.getElementById('searchResultsTo');
+    let val=inputEl.value.toLowerCase();
+    let selectEl=(mode==='from')?document.getElementById('pathFrom'):document.getElementById('pathTo');
+    let opts=Array.from(selectEl.options);
+
+    listEl.innerHTML='';
+    opts.forEach(opt=>{
+      if(opt.text.toLowerCase().includes(val)){
+        let li=document.createElement('li');
+        li.textContent=opt.text;
+        li.onclick=function(){
+          selectEl.value=opt.value;
+          closeSearchModal(mode);
+        };
+        listEl.appendChild(li);
+      }
+    });
+  }
+
+  /***************
+   * Error panel helpers
+   ***************/
+  function clearErrorPanel(){
+    const panel = document.getElementById('errorPanel');
+    panel.innerHTML = '';
+    panel.style.display = 'none';
+  }
+  function addErrorLine(msg){
+    const panel = document.getElementById('errorPanel');
+    const div = document.createElement('div');
+    div.className = 'error-line';
+    div.textContent = msg; // safe text (no HTML)
+    panel.appendChild(div);
+    panel.style.display = 'block';
+  }
+  function addSummarizedListError(prefix, arr, maxShow = 10){
+    if(!arr.length) return;
+    let shown = arr.slice(0, maxShow).join(', ');
+    let more = arr.length > maxShow ? ` … (+${arr.length - maxShow} more)` : '';
+    addErrorLine(`${prefix}: ${shown}${more}`);
+  }
+
+  // === Safe ASCII symbols for messages (avoid unicode encoding issues) ===
+  const MSG_ARROW = '->';
+  const MSG_UNDIR = '<->';
+  function pairStr(a,b){ return `${a} ${MSG_ARROW} ${b}`; }
+  function undirKey(a,b){
+    return (a < b) ? `${a}${MSG_UNDIR}${b}` : `${b}${MSG_UNDIR}${a}`;
+  }
+
+  /***************
+   * Load data from URL or File
+   ***************/
+  async function loadDataFromURL() {
+    // Always append a fresh timestamp to bust cache:
+    let baseUrl = document.getElementById("dataURL").value.trim();
+    let finalUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+
+    document.getElementById("loadingSpinner").style.display="block";
+    try {
+      // No custom headers => avoids CORS issues on Google side
+      let resp = await fetch(finalUrl, { cache: 'no-store' });
+      if(!resp.ok) throw new Error("HTTP error " + resp.status);
+      let blob = await resp.blob();
+      processExcel(blob);
+      localStorage.setItem('dataURL', baseUrl);
+    } catch(e){
+      console.error(e);
+      addErrorLine("Error loading Excel from URL: " + e.message);
+      alert("Error loading Excel from URL: " + e.message);
+    } finally {
+      document.getElementById("loadingSpinner").style.display="none";
+    }
+  }
+
+  async function loadDefaultExcel() {
+    // A default just for demonstration
+    const defaultURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQPXlADz_pJjakvXkfgFshXwE1BBgt-OlHbcPZyZ6QgUhGSTmKTutmGf481beIRAZ60MFJ-y_gJHnig/pub?output=xlsx";
+    document.getElementById("dataURL").value = defaultURL;
+    await loadDataFromURL();
+  }
+
+  document.getElementById("loadDataButton").addEventListener('click', loadDataFromURL);
+  document.getElementById("inputExcel").addEventListener("change",function(evt){
+    let file=evt.target.files[0];
+    if(file) processExcel(file);
+    else loadDefaultExcel();
+  });
+
+  function processExcel(blob) {
+    // Clear all old data so we start fresh
+    nodes.clear();
+    edges.clear();
+    groupFilters={};
+    sortColumns=[];
+    currentColorGrading=null;
+    kanbanValues=[];
+    adjacencyList={};
+    clearErrorPanel();
+
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var data=e.target.result;
+        var workbook=XLSX.read(data,{type:"binary"});
+
+        // Sheets presence checks
+        if(!workbook.Sheets["nodes"]){
+          addErrorLine("Missing sheet 'nodes'. Please include a sheet named exactly 'nodes'.");
+          return;
+        }
+        if(!workbook.Sheets["edges"]){
+          addErrorLine("Missing sheet 'edges'. Please include a sheet named exactly 'edges'.");
+          return;
+        }
+
+        // "nodes" sheet
+        var nodesSheet=workbook.Sheets["nodes"];
+        var allRows=XLSX.utils.sheet_to_json(nodesSheet,{header:1});
+        if(!allRows||allRows.length<2){
+          addErrorLine("The 'nodes' sheet has no data rows.");
+          return;
+        }
+        var headerRow=allRows[0].map(h=>(h||"").trim());
+        var nodeRows=allRows.slice(1);
+
+        var sortIndexes=[];
+        headerRow.forEach((colName,i)=>{
+          if(colName.toLowerCase().startsWith("sort_")){
+            sortIndexes.push(i);
+            sortColumns.push(colName);
+          }
+        });
+
+        // For capturing kanban and icon_url columns
+        var kanbanIndex=headerRow.indexOf("kanban");
+        var iconUrlIndex=headerRow.indexOf("icon_url");
+
+        // Collect for validations
+        let idSet = new Set();
+        let idCollisionOriginals = {}; // normalizedId -> [labels...]
+        let blankIdsRows = [];
+        let badIconUrls = [];
+
+        nodeRows.forEach((row, idx)=>{
+          if(row.every(c=>c===undefined||c===null||c===""))return;
+          var labelRaw = row[0];
+          var nodeId=(row[0]?(""+row[0]).replace(/\s+/g,""):null);
+
+          if(!nodeId){
+            blankIdsRows.push(idx+2); // +2 accounts for header (1) and 1-based
+            return; // skip adding node with empty id
+          }
+          // Detect duplicates after whitespace normalization
+          if(!idSet.has(nodeId)){
+            idSet.add(nodeId);
+            idCollisionOriginals[nodeId] = [(""+labelRaw)];
+          } else {
+            idCollisionOriginals[nodeId].push((""+labelRaw));
+          }
+
+          var color=(row[1]? row[1]:"black");
+          var value=(row[2]? row[2]:"");
+          var title=(row[3]? row[3]:"");
+          var group=(row[4]? row[4]:null);
+          if(group) groupFilters[group]=true;
+
+          var kanbanVal=null;
+          if(kanbanIndex>=0 && row[kanbanIndex]){
+            kanbanVal=row[kanbanIndex];
+          }
+
+          // Create default node object
+          var nodeObj={
+            id: nodeId,
+            label: row[0],
+            value: value,
+            color: color,
+            originalColor: color,
+            title: title,
+            group: group,
+            hidden: group? !groupFilters[group]:false,
+            sortData: {},
+            kanbanValue: kanbanVal
+          };
+
+          // Check for icon_url; if present and valid, change shape to image
+          if(iconUrlIndex > -1) {
+            let iconUrl = row[iconUrlIndex] ? row[iconUrlIndex].toString().trim() : "";
+            if(iconUrl){
+              if(/^https?:\/\//i.test(iconUrl)){
+                nodeObj.shape = "image";
+                nodeObj.image = iconUrl;
+              } else {
+                badIconUrls.push(`${row[0]} → icon_url "${iconUrl}"`);
+              }
+            }
+          }
+
+          // For sorting columns like sort_*
+          sortIndexes.forEach(si=>{
+            let raw = row[si];
+            let scVal=parseFloat(raw);
+            if(raw!==undefined && raw!==null && raw!=="" && isNaN(scVal)){
+              addErrorLine(`nodes: non-numeric value in "${headerRow[si]}" for node "${row[0]}": "${raw}"`);
+              nodeObj.sortData[ headerRow[si] ] = null;
+            } else {
+              nodeObj.sortData[ headerRow[si] ] = (isNaN(scVal)?null:scVal);
+            }
+          });
+          nodes.add(nodeObj);
+        });
+
+        // Report duplicate IDs (after trimming spaces)
+        Object.keys(idCollisionOriginals).forEach(norm=>{
+          if(idCollisionOriginals[norm].length>1){
+            addErrorLine(`Duplicate node id after removing spaces: "${norm}". Original labels in rows: ${idCollisionOriginals[norm].join(' | ')}`);
+          }
+        });
+        if(blankIdsRows.length){
+          addErrorLine(`nodes: empty/blank Node ID in row(s): ${blankIdsRows.join(', ')} (first column). These rows were ignored.`);
+        }
+        if(badIconUrls.length){
+          addErrorLine(`nodes: invalid icon_url (must start with http/https). Examples: ${badIconUrls.slice(0,5).join(' ; ')}${badIconUrls.length>5?` … (+${badIconUrls.length-5} more)`:''}`);
+        }
+
+        // "edges" sheet
+        var edgesSheet=workbook.Sheets["edges"];
+        var edgesData=XLSX.utils.sheet_to_json(edgesSheet,{header:1});
+        if(!edgesData || edgesData.length<2){
+          addErrorLine("The 'edges' sheet has no data rows.");
+        }
+        edgesData.shift(); // drop header
+
+        // Validations on edges
+        let unknownFrom = [];
+        let unknownTo = [];
+        let missingFrom = [];
+        let missingTo = [];
+        let caseSuggests = []; // {row, typed, suggestion}
+        let dupEdgeLines = [];
+        let selfLoops = [];
+        let unknownRelations = [];
+        let nonNumericVals = [];
+        let bidirectionalDuplicates = [];
+
+        let existingIds = new Set(nodes.getIds());
+        let idLowerMap = {};
+        existingIds.forEach(id => { idLowerMap[id.toLowerCase()] = id; });
+
+        let seenDir = new Set();
+        let seenUndir = new Set();
+
+        edgesData.forEach((row, idx)=>{
+          if(row.every(cell=>cell===undefined||cell===null||cell===""))return;
+
+          const rowNum = idx + 2; // header offset
+
+          // relation / style
+          var relation=(row[2]?(""+row[2]).trim().toLowerCase():"");
+          var colorE="grey";
+          var dashes=false;
+          if(relation==="promotes") colorE="green";
+          else if(relation==="inhibits") colorE="red";
+          else if(relation==="link"){ colorE="black"; dashes=true; }
+          else if(relation!==""){
+            unknownRelations.push({row: rowNum, value: relation});
+          }
+
+          var title=(row[4]? row[4]:"");
+
+          // value
+          var rawVal=row[3];
+          var val=(row[3]? parseFloat(row[3]):undefined);
+          if(rawVal!==undefined && rawVal!==null && rawVal!=="" && isNaN(parseFloat(rawVal))){
+            nonNumericVals.push({row: rowNum, value: rawVal});
+          }
+          var thickness=0.5, length=100;
+          if(val!==undefined && !isNaN(val)){
+            thickness=Math.max(0.5,0.5+(val/100)*(10-0.5));
+            length=Math.max(1,5-(val/100)*(5-1));
+          }
+
+          // endpoints (normalize)
+          var fromNode=(row[0]? (""+row[0]).replace(/\s+/g,""):"");
+          var toNode  =(row[1]? (""+row[1]).replace(/\s+/g,""):"");
+
+          // explicit missing
+          if(!fromNode) missingFrom.push(rowNum);
+          if(!toNode)   missingTo.push(rowNum);
+
+          // only validate existence if present
+          if(fromNode && !existingIds.has(fromNode)){
+            unknownFrom.push({row: rowNum, id: fromNode});
+            let low = fromNode.toLowerCase();
+            if(idLowerMap[low] && idLowerMap[low] !== fromNode){
+              caseSuggests.push({row: rowNum, typed: fromNode, suggestion: idLowerMap[low]});
+            }
+          }
+          if(toNode && !existingIds.has(toNode)){
+            unknownTo.push({row: rowNum, id: toNode});
+            let low = toNode.toLowerCase();
+            if(idLowerMap[low] && idLowerMap[low] !== toNode){
+              caseSuggests.push({row: rowNum, typed: toNode, suggestion: idLowerMap[low]});
+            }
+          }
+
+          // duplicates (use ASCII symbols to avoid Blogger encoding)
+          let keyDir = `${fromNode}${MSG_ARROW}${toNode}`;
+          if(seenDir.has(keyDir)){
+            dupEdgeLines.push({row: rowNum, key: keyDir});
+          }
+          seenDir.add(keyDir);
+
+          if(relation==="link"){
+            let keyUndir = undirKey(fromNode, toNode);
+            if(seenUndir.has(keyUndir)){
+              bidirectionalDuplicates.push({row: rowNum, key: keyUndir});
+            }
+            seenUndir.add(keyUndir);
+          }
+
+          // self-loop
+          if(fromNode && toNode && fromNode===toNode){
+            selfLoops.push({row: rowNum, id: fromNode});
+          }
+
+          // Add edge (keeps your existing behavior)
+          edges.add({
+            id:"edge_"+fromNode+"_"+toNode+"_"+Math.random(),
+            from:fromNode,
+            to:toNode,
+            arrows:(relation==="link"?"":"to"),
+            color:colorE,
+            originalColor:colorE,
+            dashes:dashes,
+            title:title,
+            width: thickness,   
+            length: length      
+          });
+        });
+
+        // Error reporting for edges (ASCII-only display)
+        if(missingFrom.length){
+          addSummarizedListError("edges: missing 'from' value (rows)", missingFrom.map(r=>`${r}`));
+        }
+        if(missingTo.length){
+          addSummarizedListError("edges: missing 'to' value (rows)", missingTo.map(r=>`${r}`));
+        }
+        if(unknownFrom.length){
+          addSummarizedListError(
+            "edges: 'from' references to non-existing nodes (rows)",
+            unknownFrom.map(x=>`${x.row} ${MSG_ARROW} "${x.id}"`)
+          );
+        }
+        if(unknownTo.length){
+          addSummarizedListError(
+            "edges: 'to' references to non-existing nodes (rows)",
+            unknownTo.map(x=>`${x.row} ${MSG_ARROW} "${x.id}"`)
+          );
+        }
+        if(caseSuggests.length){
+          addSummarizedListError(
+            "Case mismatch suggestions",
+            caseSuggests.map(x=>`row ${x.row}: "${x.typed}" ${MSG_ARROW} maybe "${x.suggestion}"`)
+          );
+        }
+        if(dupEdgeLines.length){
+          addSummarizedListError(
+            "Duplicate directed edges (rows)",
+            dupEdgeLines.map(x=>`${x.row} ${MSG_ARROW} ${x.key}`)
+          );
+        }
+        if(bidirectionalDuplicates.length){
+          addSummarizedListError(
+            "Duplicate 'link' edges detected (rows)",
+            bidirectionalDuplicates.map(x=>`${x.row} ${MSG_ARROW} ${x.key}`)
+          );
+        }
+        if(selfLoops.length){
+          addSummarizedListError(
+            "Self-loops detected (rows)",
+            selfLoops.map(x=>`${x.row} ${MSG_ARROW} "${x.id}"`)
+          );
+        }
+        if(unknownRelations.length){
+          addSummarizedListError(
+            "Unknown relation values (rows)",
+            unknownRelations.map(x=>`${x.row} ${MSG_ARROW} "${x.value}"`)
+          );
+        }
+        if(nonNumericVals.length){
+          addSummarizedListError(
+            "Non-numeric edge weights (rows)",
+            nonNumericVals.map(x=>`${x.row} ${MSG_ARROW} "${x.value}"`)
+          );
+        }
+
+        // Rebuild adjacencyList with directional edges
+        nodes.forEach(n=>{
+          adjacencyList[n.id]=[];
+        });
+        edges.forEach(e=>{
+          let isLink=(e.originalColor==="black"||e.dashes===true);
+          if(isLink){
+            if(adjacencyList[e.from]) adjacencyList[e.from].push(e.to);
+            if(adjacencyList[e.to])   adjacencyList[e.to].push(e.from);
+          } else {
+            // unidirectional
+            if(adjacencyList[e.from]) adjacencyList[e.from].push(e.to);
+          }
+        });
+
+        network.setData({nodes:nodes, edges:edges});
+        renderGroupToggles();
+        renderColorGradingToggles();
+
+        // Kanban
+        var kanbanIndexFound=(kanbanIndex>=0);
+        if(kanbanIndexFound){
+          let allK=new Set();
+          nodes.forEach(n=>{
+            if(n.kanbanValue) allK.add(n.kanbanValue);
+          });
+          kanbanValues=Array.from(allK).sort();
+        } else {
+          kanbanValues=[];
+        }
+        buildKanban();
+
+        // Fill "From"/"To" dropdowns
+        let fromSel=document.getElementById("pathFrom");
+        let toSel = document.getElementById("pathTo");
+        fromSel.innerHTML="";
+        toSel.innerHTML="";
+        let nodeArray=nodes.get();
+        nodeArray.sort((a,b)=>(a.label||"").localeCompare(b.label||""));
+        nodeArray.forEach(n=>{
+          let optF=document.createElement("option");
+          optF.value=n.id; optF.text=n.label||n.id;
+          fromSel.appendChild(optF);
+
+          let optT=document.createElement("option");
+          optT.value=n.id; optT.text=n.label||n.id;
+          toSel.appendChild(optT);
+        });
+
+        // Post-build checks: isolated nodes can hint at mismatched edges
+        let degrees = {};
+        nodes.forEach(n=>{
+          degrees[n.id]=0;
+        });
+        edges.forEach(ed=>{
+          if(degrees[ed.from]!==undefined) degrees[ed.from]++;
+          if(degrees[ed.to]!==undefined) degrees[ed.to]++;
+        });
+        let isolated = Object.keys(degrees).filter(id=>degrees[id]===0);
+        if(isolated.length){
+          addSummarizedListError("Isolated nodes (degree = 0)", isolated.map(id=>nodes.get(id)?.label||id));
+        }
+
+      } catch(err){
+        console.error(err);
+        addErrorLine("Error processing Excel: " + err.message);
+      }
+    };
+    reader.readAsBinaryString(blob);
+  }
+
+  document.addEventListener("DOMContentLoaded", async function(){
+    document.getElementById("shareButton").addEventListener("click",function(){
+      var dataURL=document.getElementById("dataURL").value.trim();
+      var baseUrl='https://www.medicinup.com/p/sheets2network.html?sheetsUrl=';
+      var fullUrl=baseUrl+encodeURIComponent(dataURL);
+      navigator.clipboard.writeText(fullUrl).then(()=>alert("URL copied."));
+    });
+
+    let sheetsUrl=(new URLSearchParams(window.location.search)).get('sheetsUrl');
+    let loadDataTriggered=false;
+    if(sheetsUrl){
+      document.getElementById("dataURL").value=decodeURIComponent(sheetsUrl);
+      await loadDataFromURL();
+      loadDataTriggered=true;
+    } else {
+      // Attempt to load previously used URL from localStorage if you want
+      let savedURL=localStorage.getItem('dataURL');
+      if(savedURL){
+        document.getElementById("dataURL").value=savedURL;
+        await loadDataFromURL();
+        loadDataTriggered=true;
+      }
+    }
+    if(!loadDataTriggered){
+      await loadDefaultExcel();
+    }
+    loadFromStorage();
+  });
+
+  // Watermark
+  var watermark=document.createElement('div');
+  watermark.id='watermark';
+  watermark.innerHTML=`<a href="https://www.medicinup.com/" target="_blank">MedicinUp © ${new Date().getFullYear()}</a>`;
+  document.getElementById("mynetwork").appendChild(watermark);
+</script>
 </body>
+</html>
