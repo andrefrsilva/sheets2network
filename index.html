@@ -354,6 +354,23 @@
       font-size: 14px;
       white-space: pre-line;
     }
+
+    /* Footer styles */
+    .site-footer {
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      padding: 20px 10px;
+      margin-top: 40px;
+      font-size: 14px;
+    }
+    .site-footer a {
+      color: #4CAF50;
+      text-decoration: none;
+    }
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 
@@ -520,7 +537,20 @@
   <div id="clusteringResults" style="display:none;"></div>
 </div> <!-- end content-container -->
 
+<!-- Footer -->
+<footer class="site-footer">
+  <p>&copy; 2026 André FR Silva. All rights reserved.</p>
+  <p>
+    <a href="https://github.com/andrefrsilva/sheets2network" target="_blank">GitHub Repository</a>
+  </p>
+</footer>
+
 <script>
+  /***************
+   * GitHub Pages Base URL
+   ***************/
+  var SITE_BASE_URL = 'https://andrefrsilva.github.io/sheets2network/';
+
   /***************
    * URL Table / localStorage
    ***************/
@@ -531,8 +561,7 @@
       shareButton.className = "button";
       shareButton.addEventListener("click", function() {
           var urlInput = row.querySelector(".urlInput").value;
-          var baseUrl = 'https://www.medicinup.com/p/sheets2network.html?sheetsUrl=';
-          var fullUrl = baseUrl + encodeURIComponent(urlInput);
+          var fullUrl = SITE_BASE_URL + '?sheetsUrl=' + encodeURIComponent(urlInput);
           navigator.clipboard.writeText(fullUrl).then(() => {
               alert("The URL was copied.");
           }, (err) => {
@@ -559,8 +588,7 @@
       shareButton.style.marginLeft = "10px";
       shareButton.onclick = function() {
           var urlInput = row.querySelector(".urlInput").value;
-          var baseUrl = 'https://www.medicinup.com/p/sheets2network.html?sheetsUrl=';
-          var fullUrl = baseUrl + encodeURIComponent(urlInput);
+          var fullUrl = SITE_BASE_URL + '?sheetsUrl=' + encodeURIComponent(urlInput);
           navigator.clipboard.writeText(fullUrl).then(() => {
               alert("The URL was copied.");
           }, (err) => {
@@ -1886,8 +1914,7 @@
   document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("shareButton").addEventListener("click",function(){
       var dataURL=document.getElementById("dataURL").value.trim();
-      var baseUrl='https://www.medicinup.com/p/sheets2network.html?sheetsUrl=';
-      var fullUrl=baseUrl+encodeURIComponent(dataURL);
+      var fullUrl = SITE_BASE_URL + '?sheetsUrl=' + encodeURIComponent(dataURL);
       navigator.clipboard.writeText(fullUrl).then(()=>alert("URL copied."));
     });
 
@@ -1912,10 +1939,10 @@
     loadFromStorage();
   });
 
-  // Watermark
+  // Watermark inside network container
   var watermark=document.createElement('div');
   watermark.id='watermark';
-  watermark.innerHTML=`<a href="https://www.medicinup.com/" target="_blank">MedicinUp © ${new Date().getFullYear()}</a>`;
+  watermark.innerHTML=`<a href="https://github.com/andrefrsilva/sheets2network" target="_blank">Sheets2Network</a>`;
   document.getElementById("mynetwork").appendChild(watermark);
 </script>
 </body>
