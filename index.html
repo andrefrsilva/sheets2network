@@ -1159,30 +1159,47 @@
       if(updates.length) edges.update(updates);
     }
 
-    // ---- Force every node to use the current base size (overrides scaling for image+dot uniformly) ----
-    // The site's options.nodes.scaling uses customScalingFunction(value/total) — so any per-node "size"
-    // gets ignored when "value" is set on the node. We bypass that by writing per-node "scaling.min=max=size"
-    // which forces the renderer to use that exact size regardless of the global value/total math.
+    // ---- Force every node to use a size derived from baseSize + its value ----
+    // Strategy: write per-node "size" and clamp scaling per-node to {min:sz, max:sz} so the global
+    // customScalingFunction(value/total) cannot collapse the differentiation. We keep a 4-5x
+    // visual ratio between the smallest and the largest value so a sheet with value=1 vs 50
+    // shows it clearly.
     function applyNodeSizeToAll(baseSize){
-      var maxVal = 1;
-      nodes.forEach(function(n){ var v = parseFloat(n.value); if(!isNaN(v) && v > maxVal) maxVal = v; });
+      var minVal = Infinity, maxVal = 1;
+      nodes.forEach(function(n){
+        var v = parseFloat(n.value);
+        if(isNaN(v) || v <= 0) v = 1;
+        if(v < minVal) minVal = v;
+        if(v > maxVal) maxVal = v;
+      });
+      if(minVal === Infinity) minVal = 1;
+      // log-normalized ratio so the largest value dominates without collapsing the small ones to zero
+      // ratio domain: roughly [0, 1] but we expand the visual range below.
+      function ratioFor(v){
+        if(maxVal <= minVal) return 1;
+        // log to compress huge ranges (1..1000) but keep clear separation
+        var lv = Math.log(v) - Math.log(minVal);
+        var lr = Math.log(maxVal) - Math.log(minVal);
+        return lr > 0 ? (lv / lr) : 1;
+      }
+      // visual range: smallest node ≈ 0.30 × base, largest ≈ 2.0 × base  →  ~6× ratio
+      var lo = 0.30, hi = 2.0;
       var updates = [];
       nodes.forEach(function(n){
         var v = parseFloat(n.value);
         if(isNaN(v) || v <= 0) v = 1;
-        var ratio = 0.55 + 0.45 * Math.sqrt(v / maxVal);
-        var sz = Math.max(2, Math.round(baseSize * ratio));
+        var r = ratioFor(v);
+        var sz = Math.max(2, Math.round(baseSize * (lo + (hi - lo) * r)));
         updates.push({
           id: n.id,
           size: sz,
-          // per-node scaling override: forces the renderer to use this exact size
-          // regardless of options.nodes.scaling.customScalingFunction(value/total)
+          // per-node scaling override → forces this exact size regardless of any global rule
           scaling: { min: sz, max: sz }
         });
       });
       if(updates.length) nodes.update(updates);
-      // also relax the global scaling so it never clamps our per-node sizes
-      network.setOptions({ nodes: { scaling: { min: 1, max: Math.max(200, baseSize * 4) } } });
+      // relax global scaling so nothing clamps our per-node sizes
+      network.setOptions({ nodes: { scaling: { min: 1, max: Math.max(500, baseSize * 5) } } });
       network.redraw();
     }
 
