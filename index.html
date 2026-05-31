@@ -575,10 +575,6 @@
   <div class="controls-bar">
     <button onclick="refreshPage()" class="button">Refresh</button>
     <button id="toggleFullscreen" class="button-outline btn">Fullscreen</button>
-    <label><input type="checkbox" id="physicsCheck" checked> Physics</label>
-    <label><input type="checkbox" id="seeAllDescendantsCheckbox"> All descendants</label>
-    <label><input type="checkbox" id="curvedEdgesCheckbox"> Curved edges</label>
-    <label><input type="checkbox" id="edgesColorCheckbox" checked> Edge colors</label>
   </div>
 
   <!-- Layout & visual settings -->
@@ -598,6 +594,18 @@
         <span style="flex:1;">Show node labels</span>
       </label>
       <label class="lp-row">
+        <input type="checkbox" id="curvedEdgesCheckbox">
+        <span style="flex:1;">Curved edges</span>
+      </label>
+      <label class="lp-row">
+        <input type="checkbox" id="edgesColorCheckbox" checked>
+        <span style="flex:1;">Edge colors</span>
+      </label>
+      <label class="lp-row">
+        <input type="checkbox" id="seeAllDescendantsCheckbox">
+        <span style="flex:1;">Show all descendants on click</span>
+      </label>
+      <label class="lp-row">
         <span>Node size</span>
         <input type="range" id="lpNodeSize" min="5" max="100" value="25" step="1">
         <output id="lpNodeSizeVal">25</output>
@@ -609,6 +617,11 @@
       </label>
 
       <div class="lp-section-title">Physics</div>
+
+      <label class="lp-row">
+        <input type="checkbox" id="physicsCheck" checked>
+        <span style="flex:1;">Physics engine on</span>
+      </label>
 
       <label class="lp-row">
         <span>Physics engine</span>
