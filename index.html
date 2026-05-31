@@ -1399,20 +1399,23 @@
     }
     function confineTick(){
       if(!confineActive){ confineRafId = null; return; }
-      // bounds in network coordinates
+      // Inner padding in DOM px → keeps a visible gap between the wall and the nodes
+      var PAD_DOM = 40;
       var w = container.clientWidth, h = container.clientHeight;
       if(w <= 0 || h <= 0){
         confineRafId = requestAnimationFrame(confineTick);
         return;
       }
-      var tl, br;
+      var tl, br, scale;
       try {
-        tl = network.DOMtoCanvas({ x: 0, y: 0 });
-        br = network.DOMtoCanvas({ x: w, y: h });
+        tl    = network.DOMtoCanvas({ x: PAD_DOM,       y: PAD_DOM       });
+        br    = network.DOMtoCanvas({ x: w - PAD_DOM,   y: h - PAD_DOM   });
+        scale = network.getScale();
       } catch(e){
         confineRafId = requestAnimationFrame(confineTick);
         return;
       }
+      if(!scale || scale <= 0) scale = 1;
       var left = Math.min(tl.x, br.x), right = Math.max(tl.x, br.x);
       var top  = Math.min(tl.y, br.y), bottom = Math.max(tl.y, br.y);
 
@@ -1421,12 +1424,13 @@
       for(var i = 0; i < ids.length; i++){
         var id = ids[i];
         var p = positions[id];
-        var r = getNodeRadius(id);
+        var rPx = getNodeRadius(id);    // size lives in pixels
+        var rCanvas = rPx / scale;      // convert to canvas/network units
         var cx = p.x, cy = p.y, changed = false;
-        if(cx - r < left)   { cx = left   + r; changed = true; }
-        if(cx + r > right)  { cx = right  - r; changed = true; }
-        if(cy - r < top)    { cy = top    + r; changed = true; }
-        if(cy + r > bottom) { cy = bottom - r; changed = true; }
+        if(cx - rCanvas < left)   { cx = left   + rCanvas; changed = true; }
+        if(cx + rCanvas > right)  { cx = right  - rCanvas; changed = true; }
+        if(cy - rCanvas < top)    { cy = top    + rCanvas; changed = true; }
+        if(cy + rCanvas > bottom) { cy = bottom - rCanvas; changed = true; }
         if(changed){
           try { network.moveNode(id, cx, cy); } catch(e){}
         }
