@@ -498,6 +498,29 @@
       font-size: 11px; color: var(--text-muted); margin: 4px 0 0;
       font-style: italic;
     }
+    .lp-row select {
+      flex: 1 1 100px; padding: 4px 6px;
+      border: 1px solid var(--border); border-radius: 3px;
+      font-size: 12px; font-family: var(--font);
+      background: var(--surface); color: var(--text);
+    }
+    .lp-section-title {
+      grid-column: 1 / -1;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
+      color: var(--text-muted); font-weight: 600;
+      padding: 6px 0 2px; border-bottom: 1px solid var(--border);
+      margin-bottom: 2px;
+    }
+    /* Reorder buttons on saved-networks rows */
+    .reorderButton {
+      background: none; color: var(--text-muted);
+      border: 1px solid var(--border);
+      padding: 2px 6px; border-radius: 3px;
+      font-size: 12px; line-height: 1;
+      margin-right: 2px;
+    }
+    .reorderButton:hover { background: var(--accent-light); color: var(--text); }
+    .reorderButton:disabled { opacity: 0.3; cursor: not-allowed; }
   </style>
 </head>
 
@@ -562,6 +585,9 @@
   <details class="layout-panel">
     <summary>Layout & visual settings</summary>
     <div class="layout-grid">
+
+      <div class="lp-section-title">Visual</div>
+
       <label class="lp-row">
         <span>Label font size</span>
         <input type="range" id="lpFontSize" min="0" max="40" value="14" step="1">
@@ -572,39 +598,62 @@
         <span style="flex:1;">Show node labels</span>
       </label>
       <label class="lp-row">
-        <span>Node base size</span>
+        <span>Node size</span>
         <input type="range" id="lpNodeSize" min="5" max="100" value="25" step="1">
         <output id="lpNodeSizeVal">25</output>
       </label>
+
+      <div class="lp-section-title">Physics</div>
+
       <label class="lp-row">
-        <span>Spring length</span>
-        <input type="range" id="lpSpringLen" min="20" max="500" value="50" step="5">
+        <span>Physics engine</span>
+        <select id="lpSolver">
+          <option value="barnesHut" selected>barnesHut (default)</option>
+          <option value="forceAtlas2Based">forceAtlas2Based (more spread)</option>
+          <option value="repulsion">repulsion (simple Coulomb)</option>
+        </select>
+      </label>
+
+      <label class="lp-row" data-solver-param="spring">
+        <span><span data-label="spring">Spring length</span></span>
+        <input type="range" id="lpSpringLen" min="20" max="600" value="50" step="5">
         <output id="lpSpringLenVal">50</output>
       </label>
-      <label class="lp-row">
-        <span>Repulsion strength</span>
-        <input type="range" id="lpRepulsion" min="500" max="30000" value="8000" step="500">
+
+      <label class="lp-row" data-solver-param="repulsion">
+        <span><span data-label="repulsion">Repulsion (-gravConst)</span></span>
+        <input type="range" id="lpRepulsion" min="0" max="30000" value="8000" step="100">
         <output id="lpRepulsionVal">8000</output>
       </label>
-      <label class="lp-row">
+
+      <label class="lp-row" data-solver-param="centralGravity">
         <span>Central gravity</span>
         <input type="range" id="lpCentralGravity" min="0" max="100" value="1" step="1">
         <output id="lpCentralGravityVal">0.01</output>
       </label>
-      <label class="lp-row">
+
+      <label class="lp-row" data-solver-param="springConstant">
+        <span>Spring stiffness</span>
+        <input type="range" id="lpSpringConst" min="0" max="200" value="4" step="1">
+        <output id="lpSpringConstVal">0.04</output>
+      </label>
+
+      <label class="lp-row" data-solver-param="damping">
+        <span>Damping</span>
+        <input type="range" id="lpDamping" min="0" max="100" value="9" step="1">
+        <output id="lpDampingVal">0.09</output>
+      </label>
+
+      <label class="lp-row" data-solver-param="avoidOverlap">
         <input type="checkbox" id="lpAvoidOverlap">
         <span style="flex:1;">Avoid node overlap</span>
       </label>
-      <label class="lp-row">
-        <span>Edge length (manual)</span>
-        <input type="range" id="lpEdgeLen" min="20" max="500" value="100" step="10">
-        <output id="lpEdgeLenVal">100</output>
-      </label>
+
       <div class="lp-actions">
-        <button type="button" id="lpApplyLayout" class="button">Apply layout</button>
-        <button type="button" id="lpResetLayout" class="button-outline btn">Reset</button>
+        <button type="button" id="lpStabilize" class="button">Re-stabilize</button>
+        <button type="button" id="lpResetLayout" class="button-outline btn">Reset to defaults</button>
       </div>
-      <p class="lp-hint">Visual changes (labels, node size) apply live. Physics changes (spring, repulsion, gravity, overlap, edge length) apply when you click "Apply layout".</p>
+      <p class="lp-hint">All changes apply live. Click "Re-stabilize" if the network looks stuck after big changes. Solver parameters reload to that solver's official defaults whenever you switch engines.</p>
     </div>
   </details>
 
@@ -691,7 +740,7 @@
       <input type="file" id="uploadTableFile" accept=".json" style="display:none" onchange="uploadUrlTableFile(event)">
     </div>
     <table id="urlTable">
-      <tr><th>Title</th><th>URL</th><th>Action</th></tr>
+      <tr><th style="width:60px;">Order</th><th>Title</th><th>URL</th><th>Action</th></tr>
     </table>
   </div>
 
@@ -732,9 +781,24 @@
   function addRow(title='', url='') {
     var table = document.getElementById("urlTable");
     var row = table.insertRow(-1);
-    var titleCell = row.insertCell(0);
-    var urlCell = row.insertCell(1);
-    var actionCell = row.insertCell(2);
+    var orderCell = row.insertCell(0);
+    var titleCell = row.insertCell(1);
+    var urlCell = row.insertCell(2);
+    var actionCell = row.insertCell(3);
+
+    // Reorder buttons (up/down)
+    var upBtn = document.createElement("button");
+    upBtn.className = "reorderButton";
+    upBtn.title = "Move up";
+    upBtn.textContent = "▲";
+    upBtn.onclick = function(){ moveRow(row, -1); };
+    var downBtn = document.createElement("button");
+    downBtn.className = "reorderButton";
+    downBtn.title = "Move down";
+    downBtn.textContent = "▼";
+    downBtn.onclick = function(){ moveRow(row, +1); };
+    orderCell.appendChild(upBtn);
+    orderCell.appendChild(downBtn);
 
     titleCell.innerHTML = '<input type="text" value="'+title+'" class="titleInput" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:3px;font-size:13px;">';
     urlCell.innerHTML = '<input type="text" value="'+url+'" class="urlInput" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:3px;font-size:13px;">';
@@ -760,6 +824,36 @@
 
     titleCell.querySelector('input').addEventListener('change', saveToStorage);
     urlCell.querySelector('input').addEventListener('change', saveToStorage);
+
+    updateReorderButtons();
+  }
+
+  // Update enabled/disabled state of all up/down buttons so the first/last row can't move past edges
+  function updateReorderButtons(){
+    var table = document.getElementById("urlTable");
+    var dataRows = Array.from(table.rows).slice(1); // skip header
+    dataRows.forEach(function(r, idx){
+      var btns = r.cells[0].querySelectorAll('.reorderButton');
+      if(btns.length < 2) return;
+      btns[0].disabled = (idx === 0);
+      btns[1].disabled = (idx === dataRows.length - 1);
+    });
+  }
+
+  function moveRow(row, direction){
+    var table = document.getElementById("urlTable");
+    var tbody = row.parentNode;
+    var allRows = Array.from(table.rows);
+    var idx = allRows.indexOf(row); // 0 = header
+    if(direction < 0 && idx > 1){
+      tbody.insertBefore(row, allRows[idx - 1]);
+    } else if(direction > 0 && idx < allRows.length - 1){
+      tbody.insertBefore(allRows[idx + 1], row);
+    } else {
+      return;
+    }
+    updateReorderButtons();
+    saveToStorage();
   }
 
   function loadURL(btn) {
@@ -770,14 +864,15 @@
   function deleteRow(btn) {
     var row = btn.closest('tr');
     row.parentNode.removeChild(row);
+    updateReorderButtons();
     saveToStorage();
   }
   function saveToStorage() {
     var data = [];
     var rows = document.getElementById("urlTable").rows;
     for(var i=1;i<rows.length;i++){
-      var title=rows[i].cells[0].querySelector('input').value;
-      var url=rows[i].cells[1].querySelector('input').value;
+      var title=rows[i].querySelector('.titleInput').value;
+      var url=rows[i].querySelector('.urlInput').value;
       data.push({title,url});
     }
     localStorage.setItem("urlData", JSON.stringify(data));
@@ -968,85 +1063,227 @@
   /***************
    * Layout & visual settings (panel)
    ***************/
-  (function setupLayoutPanel(){
+  // Site-original defaults (the look the site ships with)
+  var SITE_DEFAULTS = {
+    nodeSize: 25,
+    fontSize: 14,
+    showLabels: true,
+    solver: 'barnesHut',
+    barnesHut:        { gravitationalConstant:-8000, springLength: 50, centralGravity:0.01, springConstant:0.04, damping:0.09, avoidOverlap:0 },
+    forceAtlas2Based: { gravitationalConstant: -50, springLength:100, centralGravity:0.01, springConstant:0.08, damping:0.40, avoidOverlap:0 },
+    repulsion:        { nodeDistance:        100, springLength:200, centralGravity:0.20, springConstant:0.05, damping:0.09, avoidOverlap:0 }
+  };
+  // Per-solver UI parameter mapping
+  // The "repulsion" slider feeds gravitationalConstant in barnesHut/forceAtlas2,
+  // and feeds nodeDistance in repulsion (different semantics, both control spread).
+  function setupLayoutPanel(){
     var $id = function(id){ return document.getElementById(id); };
-    var bindOutput = function(id, valId, format){
+
+    // ---- Tooltip / label updates per solver ----
+    function updateLabelsFor(solver){
+      var springLabel = document.querySelector('[data-label="spring"]');
+      var repulsionLabel = document.querySelector('[data-label="repulsion"]');
+      if(solver === 'repulsion'){
+        springLabel.textContent = 'Spring length';
+        repulsionLabel.textContent = 'Node distance';
+      } else {
+        springLabel.textContent = 'Spring length';
+        repulsionLabel.textContent = (solver === 'forceAtlas2Based') ? 'Repulsion strength' : 'Repulsion strength';
+      }
+    }
+
+    // ---- Apply solver's defaults to UI sliders ----
+    function loadSolverDefaultsIntoUI(solver){
+      var d = SITE_DEFAULTS[solver];
+      $id('lpSpringLen').value = d.springLength;
+      $id('lpSpringLenVal').value = d.springLength;
+      var repVal = (solver === 'repulsion') ? d.nodeDistance : Math.abs(d.gravitationalConstant);
+      // expand max if needed
+      if(repVal > parseFloat($id('lpRepulsion').max)){
+        $id('lpRepulsion').max = repVal;
+      }
+      $id('lpRepulsion').value = repVal;
+      $id('lpRepulsionVal').value = repVal;
+      $id('lpCentralGravity').value = Math.round(d.centralGravity * 100);
+      $id('lpCentralGravityVal').value = d.centralGravity.toFixed(2);
+      $id('lpSpringConst').value = Math.round(d.springConstant * 100);
+      $id('lpSpringConstVal').value = d.springConstant.toFixed(2);
+      $id('lpDamping').value = Math.round(d.damping * 100);
+      $id('lpDampingVal').value = d.damping.toFixed(2);
+      $id('lpAvoidOverlap').checked = d.avoidOverlap >= 0.5;
+    }
+
+    // ---- Update options.physics with current UI values for the chosen solver ----
+    function pushUIToPhysicsOptions(){
+      var solver = $id('lpSolver').value;
+      var springLen = parseFloat($id('lpSpringLen').value);
+      var repInput = parseFloat($id('lpRepulsion').value);
+      var cg = parseFloat($id('lpCentralGravity').value) / 100;
+      var sc = parseFloat($id('lpSpringConst').value) / 100;
+      var dmp = parseFloat($id('lpDamping').value) / 100;
+      var ao = $id('lpAvoidOverlap').checked ? 1 : 0;
+
+      options.physics.solver = solver;
+      // ensure solver block exists
+      if(!options.physics[solver]) options.physics[solver] = {};
+
+      if(solver === 'barnesHut'){
+        options.physics.barnesHut.gravitationalConstant = -repInput;
+        options.physics.barnesHut.springLength = springLen;
+        options.physics.barnesHut.centralGravity = cg;
+        options.physics.barnesHut.springConstant = sc;
+        options.physics.barnesHut.damping = dmp;
+        options.physics.barnesHut.avoidOverlap = ao;
+      } else if(solver === 'forceAtlas2Based'){
+        options.physics.forceAtlas2Based = options.physics.forceAtlas2Based || {};
+        options.physics.forceAtlas2Based.gravitationalConstant = -Math.max(1, repInput / 100); // FA2 uses much smaller magnitudes
+        options.physics.forceAtlas2Based.springLength = springLen;
+        options.physics.forceAtlas2Based.centralGravity = cg;
+        options.physics.forceAtlas2Based.springConstant = sc;
+        options.physics.forceAtlas2Based.damping = dmp;
+        options.physics.forceAtlas2Based.avoidOverlap = ao;
+      } else if(solver === 'repulsion'){
+        options.physics.repulsion = options.physics.repulsion || {};
+        options.physics.repulsion.nodeDistance = repInput;
+        options.physics.repulsion.springLength = springLen;
+        options.physics.repulsion.centralGravity = cg;
+        options.physics.repulsion.springConstant = sc;
+        options.physics.repulsion.damping = dmp;
+        // repulsion solver has no avoidOverlap
+      }
+    }
+
+    // ---- Force every edge to use the current spring length (overrides per-edge length from processExcel) ----
+    function applySpringLengthToEdges(springLen){
+      var updates = [];
+      edges.forEach(function(e){ updates.push({ id: e.id, length: springLen }); });
+      if(updates.length) edges.update(updates);
+    }
+
+    // ---- Force every node to use the current base size (overrides scaling for image+dot uniformly) ----
+    function applyNodeSizeToAll(baseSize){
+      var updates = [];
+      // proportionate scaling: nodes with higher value still appear larger, but everyone responds to baseSize
+      var maxVal = 1;
+      nodes.forEach(function(n){ var v = parseFloat(n.value); if(!isNaN(v) && v > maxVal) maxVal = v; });
+      nodes.forEach(function(n){
+        var v = parseFloat(n.value);
+        if(isNaN(v) || v <= 0) v = 1;
+        // sqrt scaling keeps the big nodes a bit bigger without dominating
+        var ratio = 0.55 + 0.45 * Math.sqrt(v / maxVal);
+        updates.push({ id: n.id, size: Math.max(2, Math.round(baseSize * ratio)) });
+      });
+      if(updates.length) nodes.update(updates);
+    }
+
+    // ---- Apply visuals (font, labels) directly ----
+    function applyFontSize(v){ network.setOptions({ nodes: { font: { size: v } } }); }
+    function applyShowLabels(show){ network.setOptions({ nodes: { font: { color: show ? '#000000' : 'rgba(0,0,0,0)' } } }); }
+
+    // ---- Slider <output> sync ----
+    function syncOutput(id, valId, fmt){
       var r = $id(id), o = $id(valId);
-      var fmt = format || function(v){ return v; };
+      fmt = fmt || function(v){ return v; };
+      o.value = fmt(parseFloat(r.value));
+    }
+    function bindOutput(id, valId, fmt){
+      var r = $id(id), o = $id(valId);
+      fmt = fmt || function(v){ return v; };
       r.addEventListener('input', function(){ o.value = fmt(parseFloat(r.value)); });
-    };
-    // keep <output> in sync with sliders
+    }
     bindOutput('lpFontSize','lpFontSizeVal');
     bindOutput('lpNodeSize','lpNodeSizeVal');
     bindOutput('lpSpringLen','lpSpringLenVal');
     bindOutput('lpRepulsion','lpRepulsionVal');
     bindOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
-    bindOutput('lpEdgeLen','lpEdgeLenVal');
+    bindOutput('lpSpringConst','lpSpringConstVal', function(v){ return (v/100).toFixed(2); });
+    bindOutput('lpDamping','lpDampingVal', function(v){ return (v/100).toFixed(2); });
 
-    // ----- Live (visual) changes -----
-    $id('lpFontSize').addEventListener('input', function(){
-      var v = parseFloat($id('lpFontSize').value);
-      network.setOptions({ nodes: { font: { size: v } } });
-    });
-    $id('lpShowLabels').addEventListener('change', function(e){
-      var show = e.target.checked;
-      network.setOptions({ nodes: { font: { color: show ? '#000000' : 'rgba(0,0,0,0)' } } });
-    });
-    $id('lpNodeSize').addEventListener('input', function(){
-      var v = parseFloat($id('lpNodeSize').value);
-      // scale the existing min/max range proportionally; v=25 keeps the default
-      network.setOptions({ nodes: { scaling: { min: Math.max(2, Math.round(v*0.2)), max: Math.max(10, v*2) } } });
-    });
+    // ---- Live visual handlers ----
+    $id('lpFontSize').addEventListener('input', function(){ applyFontSize(parseFloat(this.value)); });
+    $id('lpShowLabels').addEventListener('change', function(){ applyShowLabels(this.checked); });
+    $id('lpNodeSize').addEventListener('input', function(){ applyNodeSizeToAll(parseFloat(this.value)); });
 
-    // ----- Physics changes: apply on click -----
-    $id('lpApplyLayout').addEventListener('click', function(){
-      var repulsion = -parseFloat($id('lpRepulsion').value);
-      var springLen = parseFloat($id('lpSpringLen').value);
-      var cg = parseFloat($id('lpCentralGravity').value) / 100;
-      var edgeLen = parseFloat($id('lpEdgeLen').value);
-      var avoidOverlap = $id('lpAvoidOverlap').checked ? 1 : 0;
-      options.physics.barnesHut.gravitationalConstant = repulsion;
-      options.physics.barnesHut.springLength = springLen;
-      options.physics.barnesHut.centralGravity = cg;
-      options.physics.barnesHut.avoidOverlap = avoidOverlap;
-      options.edges.length = edgeLen;
-      network.setOptions(options);
-      if(options.physics.enabled){
-        try { network.stabilize(); } catch(e){}
-      } else {
-        network.redraw();
-      }
+    // ---- Live physics handlers ----
+    function applyPhysicsLive(){
+      pushUIToPhysicsOptions();
+      network.setOptions({ physics: options.physics });
+    }
+    // spring length also rewrites per-edge length (THIS is the fix for "edges don't move")
+    $id('lpSpringLen').addEventListener('input', function(){
+      applySpringLengthToEdges(parseFloat(this.value));
+      applyPhysicsLive();
     });
+    ['lpRepulsion','lpCentralGravity','lpSpringConst','lpDamping'].forEach(function(id){
+      $id(id).addEventListener('input', applyPhysicsLive);
+    });
+    $id('lpAvoidOverlap').addEventListener('change', applyPhysicsLive);
 
-    // ----- Reset to defaults -----
-    $id('lpResetLayout').addEventListener('click', function(){
-      var setVal = function(id, val){ $id(id).value = val; };
-      setVal('lpFontSize', 14);  setVal('lpFontSizeVal', 14);
-      $id('lpShowLabels').checked = true;
-      setVal('lpNodeSize', 25);  setVal('lpNodeSizeVal', 25);
-      setVal('lpSpringLen', 50); setVal('lpSpringLenVal', 50);
-      setVal('lpRepulsion', 8000); setVal('lpRepulsionVal', 8000);
-      setVal('lpCentralGravity', 1); setVal('lpCentralGravityVal', '0.01');
-      $id('lpAvoidOverlap').checked = false;
-      setVal('lpEdgeLen', 100); setVal('lpEdgeLenVal', 100);
+    // ---- Solver switch ----
+    $id('lpSolver').addEventListener('change', function(){
+      var solver = this.value;
+      updateLabelsFor(solver);
+      loadSolverDefaultsIntoUI(solver);
+      // refresh outputs
+      syncOutput('lpSpringLen','lpSpringLenVal');
+      syncOutput('lpRepulsion','lpRepulsionVal');
+      syncOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
+      syncOutput('lpSpringConst','lpSpringConstVal', function(v){ return (v/100).toFixed(2); });
+      syncOutput('lpDamping','lpDampingVal', function(v){ return (v/100).toFixed(2); });
 
-      options.physics.barnesHut.gravitationalConstant = -8000;
-      options.physics.barnesHut.springLength = 50;
-      options.physics.barnesHut.centralGravity = 0.01;
-      options.physics.barnesHut.avoidOverlap = 0;
-      options.edges.length = 100;
-      network.setOptions({
-        nodes: { font: { size: 14, color: '#000000' }, scaling: { min:5, max:50 } },
-        edges: { length: 100 },
-        physics: options.physics
+      // hide solver-irrelevant rows: repulsion solver has no avoidOverlap
+      document.querySelectorAll('[data-solver-param="avoidOverlap"]').forEach(function(el){
+        el.style.display = (solver === 'repulsion') ? 'none' : '';
       });
-      if(options.physics.enabled){
-        try { network.stabilize(); } catch(e){}
-      } else {
-        network.redraw();
-      }
+
+      applySpringLengthToEdges(parseFloat($id('lpSpringLen').value));
+      pushUIToPhysicsOptions();
+      network.setOptions({ physics: options.physics });
+      try { network.stabilize(); } catch(e){}
     });
-  })();
+
+    // ---- Re-stabilize button ----
+    $id('lpStabilize').addEventListener('click', function(){
+      try { network.stabilize(); } catch(e){}
+    });
+
+    // ---- Reset to site defaults ----
+    $id('lpResetLayout').addEventListener('click', function(){
+      $id('lpFontSize').value = SITE_DEFAULTS.fontSize;
+      syncOutput('lpFontSize','lpFontSizeVal');
+      $id('lpShowLabels').checked = SITE_DEFAULTS.showLabels;
+      $id('lpNodeSize').value = SITE_DEFAULTS.nodeSize;
+      syncOutput('lpNodeSize','lpNodeSizeVal');
+      $id('lpSolver').value = SITE_DEFAULTS.solver;
+      updateLabelsFor(SITE_DEFAULTS.solver);
+      loadSolverDefaultsIntoUI(SITE_DEFAULTS.solver);
+      syncOutput('lpSpringLen','lpSpringLenVal');
+      syncOutput('lpRepulsion','lpRepulsionVal');
+      syncOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
+      syncOutput('lpSpringConst','lpSpringConstVal', function(v){ return (v/100).toFixed(2); });
+      syncOutput('lpDamping','lpDampingVal', function(v){ return (v/100).toFixed(2); });
+      document.querySelectorAll('[data-solver-param="avoidOverlap"]').forEach(function(el){ el.style.display = ''; });
+
+      applyFontSize(SITE_DEFAULTS.fontSize);
+      applyShowLabels(SITE_DEFAULTS.showLabels);
+      applyNodeSizeToAll(SITE_DEFAULTS.nodeSize);
+      applySpringLengthToEdges(SITE_DEFAULTS.barnesHut.springLength);
+      pushUIToPhysicsOptions();
+      network.setOptions({ physics: options.physics });
+      try { network.stabilize(); } catch(e){}
+    });
+
+    // expose so processExcel can call after loading new data
+    window.__lpReapply = function(){
+      applyFontSize(parseFloat($id('lpFontSize').value));
+      applyShowLabels($id('lpShowLabels').checked);
+      applyNodeSizeToAll(parseFloat($id('lpNodeSize').value));
+      applySpringLengthToEdges(parseFloat($id('lpSpringLen').value));
+      pushUIToPhysicsOptions();
+      network.setOptions({ physics: options.physics });
+    };
+  }
+  setupLayoutPanel();
 
   /**
    * NODE SELECTION: show only the clicked node + its direct children.
@@ -1501,6 +1738,9 @@
         edges.forEach(ed=>{if(deg[ed.from]!==undefined)deg[ed.from]++;if(deg[ed.to]!==undefined)deg[ed.to]++;});
         let isolated=Object.keys(deg).filter(id=>deg[id]===0);
         if(isolated.length)addSummarizedListError("Isolated nodes (degree=0)",isolated.map(id=>nodes.get(id)?.label||id));
+
+        // Re-apply current layout-panel settings so node size / spring length stick across loads
+        if(typeof window.__lpReapply === 'function'){ try { window.__lpReapply(); } catch(e){} }
 
       }catch(err){console.error(err);addErrorLine("Error processing Excel: "+err.message);}
     };
