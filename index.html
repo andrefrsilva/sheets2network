@@ -447,6 +447,57 @@
     /* Group toggle container */
     #groupToggles, #colorGradingToggles { display: inline-block; }
     #colorGradingToggles { margin-left: 20px; }
+
+    /* Layout & visual settings panel */
+    .layout-panel {
+      margin: 4px 0 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px 12px 8px;
+    }
+    .layout-panel > summary {
+      cursor: pointer; padding: 6px 0;
+      font-weight: 600; color: var(--text-muted);
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+      list-style: none;
+    }
+    .layout-panel > summary::before {
+      content: "▸ ";
+      display: inline-block;
+      transition: transform 0.15s;
+    }
+    .layout-panel[open] > summary::before {
+      transform: rotate(90deg);
+    }
+    .layout-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 6px 16px;
+      padding: 8px 0 4px;
+    }
+    .lp-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--text);
+      padding: 2px 0;
+    }
+    .lp-row > span { flex: 0 0 130px; color: var(--text-muted); }
+    .lp-row input[type="range"] { flex: 1 1 100px; accent-color: var(--accent); }
+    .lp-row output {
+      font-family: var(--mono); font-size: 11px;
+      color: var(--text-muted); flex: 0 0 42px; text-align: right;
+    }
+    .lp-row input[type="checkbox"] { accent-color: var(--accent); }
+    .lp-actions {
+      grid-column: 1 / -1;
+      display: flex; gap: 8px; padding-top: 6px;
+      border-top: 1px solid var(--border); margin-top: 4px;
+    }
+    .lp-hint {
+      grid-column: 1 / -1;
+      font-size: 11px; color: var(--text-muted); margin: 4px 0 0;
+      font-style: italic;
+    }
   </style>
 </head>
 
@@ -506,6 +557,56 @@
     <label><input type="checkbox" id="curvedEdgesCheckbox"> Curved edges</label>
     <label><input type="checkbox" id="edgesColorCheckbox" checked> Edge colors</label>
   </div>
+
+  <!-- Layout & visual settings -->
+  <details class="layout-panel">
+    <summary>Layout & visual settings</summary>
+    <div class="layout-grid">
+      <label class="lp-row">
+        <span>Label font size</span>
+        <input type="range" id="lpFontSize" min="0" max="40" value="14" step="1">
+        <output id="lpFontSizeVal">14</output>
+      </label>
+      <label class="lp-row">
+        <input type="checkbox" id="lpShowLabels" checked>
+        <span style="flex:1;">Show node labels</span>
+      </label>
+      <label class="lp-row">
+        <span>Node base size</span>
+        <input type="range" id="lpNodeSize" min="5" max="100" value="25" step="1">
+        <output id="lpNodeSizeVal">25</output>
+      </label>
+      <label class="lp-row">
+        <span>Spring length</span>
+        <input type="range" id="lpSpringLen" min="20" max="500" value="50" step="5">
+        <output id="lpSpringLenVal">50</output>
+      </label>
+      <label class="lp-row">
+        <span>Repulsion strength</span>
+        <input type="range" id="lpRepulsion" min="500" max="30000" value="8000" step="500">
+        <output id="lpRepulsionVal">8000</output>
+      </label>
+      <label class="lp-row">
+        <span>Central gravity</span>
+        <input type="range" id="lpCentralGravity" min="0" max="100" value="1" step="1">
+        <output id="lpCentralGravityVal">0.01</output>
+      </label>
+      <label class="lp-row">
+        <input type="checkbox" id="lpAvoidOverlap">
+        <span style="flex:1;">Avoid node overlap</span>
+      </label>
+      <label class="lp-row">
+        <span>Edge length (manual)</span>
+        <input type="range" id="lpEdgeLen" min="20" max="500" value="100" step="10">
+        <output id="lpEdgeLenVal">100</output>
+      </label>
+      <div class="lp-actions">
+        <button type="button" id="lpApplyLayout" class="button">Apply layout</button>
+        <button type="button" id="lpResetLayout" class="button-outline btn">Reset</button>
+      </div>
+      <p class="lp-hint">Visual changes (labels, node size) apply live. Physics changes (spring, repulsion, gravity, overlap, edge length) apply when you click "Apply layout".</p>
+    </div>
+  </details>
 
   <div style="margin-bottom:10px;">
     <div id="groupToggles"></div>
@@ -840,7 +941,8 @@
     },
     nodes: {
       shape: "dot",
-      scaling: { customScalingFunction:function(min,max,total,value){return value/total;}, min:5, max:50 }
+      scaling: { customScalingFunction:function(min,max,total,value){return value/total;}, min:5, max:50 },
+      font: { size: 14, color: '#000000' }
     },
     edges: {
       color:{inherit:false}, width:1, length:100,
@@ -862,6 +964,89 @@
   document.getElementById("curvedEdgesCheckbox").addEventListener("change",function(){
     options.edges.smooth.enabled=this.checked; network.setOptions(options); network.redraw();
   });
+
+  /***************
+   * Layout & visual settings (panel)
+   ***************/
+  (function setupLayoutPanel(){
+    var $id = function(id){ return document.getElementById(id); };
+    var bindOutput = function(id, valId, format){
+      var r = $id(id), o = $id(valId);
+      var fmt = format || function(v){ return v; };
+      r.addEventListener('input', function(){ o.value = fmt(parseFloat(r.value)); });
+    };
+    // keep <output> in sync with sliders
+    bindOutput('lpFontSize','lpFontSizeVal');
+    bindOutput('lpNodeSize','lpNodeSizeVal');
+    bindOutput('lpSpringLen','lpSpringLenVal');
+    bindOutput('lpRepulsion','lpRepulsionVal');
+    bindOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
+    bindOutput('lpEdgeLen','lpEdgeLenVal');
+
+    // ----- Live (visual) changes -----
+    $id('lpFontSize').addEventListener('input', function(){
+      var v = parseFloat($id('lpFontSize').value);
+      network.setOptions({ nodes: { font: { size: v } } });
+    });
+    $id('lpShowLabels').addEventListener('change', function(e){
+      var show = e.target.checked;
+      network.setOptions({ nodes: { font: { color: show ? '#000000' : 'rgba(0,0,0,0)' } } });
+    });
+    $id('lpNodeSize').addEventListener('input', function(){
+      var v = parseFloat($id('lpNodeSize').value);
+      // scale the existing min/max range proportionally; v=25 keeps the default
+      network.setOptions({ nodes: { scaling: { min: Math.max(2, Math.round(v*0.2)), max: Math.max(10, v*2) } } });
+    });
+
+    // ----- Physics changes: apply on click -----
+    $id('lpApplyLayout').addEventListener('click', function(){
+      var repulsion = -parseFloat($id('lpRepulsion').value);
+      var springLen = parseFloat($id('lpSpringLen').value);
+      var cg = parseFloat($id('lpCentralGravity').value) / 100;
+      var edgeLen = parseFloat($id('lpEdgeLen').value);
+      var avoidOverlap = $id('lpAvoidOverlap').checked ? 1 : 0;
+      options.physics.barnesHut.gravitationalConstant = repulsion;
+      options.physics.barnesHut.springLength = springLen;
+      options.physics.barnesHut.centralGravity = cg;
+      options.physics.barnesHut.avoidOverlap = avoidOverlap;
+      options.edges.length = edgeLen;
+      network.setOptions(options);
+      if(options.physics.enabled){
+        try { network.stabilize(); } catch(e){}
+      } else {
+        network.redraw();
+      }
+    });
+
+    // ----- Reset to defaults -----
+    $id('lpResetLayout').addEventListener('click', function(){
+      var setVal = function(id, val){ $id(id).value = val; };
+      setVal('lpFontSize', 14);  setVal('lpFontSizeVal', 14);
+      $id('lpShowLabels').checked = true;
+      setVal('lpNodeSize', 25);  setVal('lpNodeSizeVal', 25);
+      setVal('lpSpringLen', 50); setVal('lpSpringLenVal', 50);
+      setVal('lpRepulsion', 8000); setVal('lpRepulsionVal', 8000);
+      setVal('lpCentralGravity', 1); setVal('lpCentralGravityVal', '0.01');
+      $id('lpAvoidOverlap').checked = false;
+      setVal('lpEdgeLen', 100); setVal('lpEdgeLenVal', 100);
+
+      options.physics.barnesHut.gravitationalConstant = -8000;
+      options.physics.barnesHut.springLength = 50;
+      options.physics.barnesHut.centralGravity = 0.01;
+      options.physics.barnesHut.avoidOverlap = 0;
+      options.edges.length = 100;
+      network.setOptions({
+        nodes: { font: { size: 14, color: '#000000' }, scaling: { min:5, max:50 } },
+        edges: { length: 100 },
+        physics: options.physics
+      });
+      if(options.physics.enabled){
+        try { network.stabilize(); } catch(e){}
+      } else {
+        network.redraw();
+      }
+    });
+  })();
 
   /**
    * NODE SELECTION: show only the clicked node + its direct children.
