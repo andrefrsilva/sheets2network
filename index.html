@@ -602,6 +602,11 @@
         <input type="range" id="lpNodeSize" min="5" max="100" value="25" step="1">
         <output id="lpNodeSizeVal">25</output>
       </label>
+      <label class="lp-row">
+        <span>Size contrast</span>
+        <input type="range" id="lpSizeContrast" min="1" max="50" value="6" step="1">
+        <output id="lpSizeContrastVal">6×</output>
+      </label>
 
       <div class="lp-section-title">Physics</div>
 
@@ -1065,6 +1070,7 @@
   // Site-original defaults (the look the site ships with)
   var SITE_DEFAULTS = {
     nodeSize: 25,
+    sizeContrast: 6,
     fontSize: 14,
     showLabels: true,
     solver: 'barnesHut',
@@ -1159,12 +1165,17 @@
       if(updates.length) edges.update(updates);
     }
 
-    // ---- Force every node to use a size derived from baseSize + its value ----
+    // ---- Force every node to use a size derived from baseSize + its value + contrast slider ----
     // Strategy: write per-node "size" and clamp scaling per-node to {min:sz, max:sz} so the global
-    // customScalingFunction(value/total) cannot collapse the differentiation. We keep a 4-5x
-    // visual ratio between the smallest and the largest value so a sheet with value=1 vs 50
-    // shows it clearly.
+    // customScalingFunction(value/total) cannot collapse the differentiation.
+    //
+    // Size contrast (C) controls how big the gap is between the smallest and the largest:
+    //   C = 1   → all nodes equal (lo = hi = 1)
+    //   C = N   → smallest = base/sqrt(N), largest = base*sqrt(N)   ⇒ ratio max/min = N
     function applyNodeSizeToAll(baseSize){
+      var contrast = parseFloat($id('lpSizeContrast') ? $id('lpSizeContrast').value : 6);
+      if(isNaN(contrast) || contrast < 1) contrast = 1;
+
       var minVal = Infinity, maxVal = 1;
       nodes.forEach(function(n){
         var v = parseFloat(n.value);
@@ -1173,33 +1184,34 @@
         if(v > maxVal) maxVal = v;
       });
       if(minVal === Infinity) minVal = 1;
-      // log-normalized ratio so the largest value dominates without collapsing the small ones to zero
-      // ratio domain: roughly [0, 1] but we expand the visual range below.
+
+      // log-normalized 0..1 ratio so huge value ranges (1..1000) stay readable
       function ratioFor(v){
         if(maxVal <= minVal) return 1;
-        // log to compress huge ranges (1..1000) but keep clear separation
         var lv = Math.log(v) - Math.log(minVal);
         var lr = Math.log(maxVal) - Math.log(minVal);
         return lr > 0 ? (lv / lr) : 1;
       }
-      // visual range: smallest node ≈ 0.30 × base, largest ≈ 2.0 × base  →  ~6× ratio
-      var lo = 0.30, hi = 2.0;
+
+      // contrast → lo/hi multipliers
+      var lo = 1 / Math.sqrt(contrast);
+      var hi =     Math.sqrt(contrast);
+
       var updates = [];
       nodes.forEach(function(n){
         var v = parseFloat(n.value);
         if(isNaN(v) || v <= 0) v = 1;
         var r = ratioFor(v);
-        var sz = Math.max(2, Math.round(baseSize * (lo + (hi - lo) * r)));
+        var sz = Math.max(1, Math.round(baseSize * (lo + (hi - lo) * r)));
         updates.push({
           id: n.id,
           size: sz,
-          // per-node scaling override → forces this exact size regardless of any global rule
           scaling: { min: sz, max: sz }
         });
       });
       if(updates.length) nodes.update(updates);
-      // relax global scaling so nothing clamps our per-node sizes
-      network.setOptions({ nodes: { scaling: { min: 1, max: Math.max(500, baseSize * 5) } } });
+      // relax global scaling so nothing clamps the per-node sizes (largest can be base * sqrt(C))
+      network.setOptions({ nodes: { scaling: { min: 1, max: Math.max(500, Math.round(baseSize * hi * 1.5)) } } });
       network.redraw();
     }
 
@@ -1220,6 +1232,7 @@
     }
     bindOutput('lpFontSize','lpFontSizeVal');
     bindOutput('lpNodeSize','lpNodeSizeVal');
+    bindOutput('lpSizeContrast','lpSizeContrastVal', function(v){ return v + '×'; });
     bindOutput('lpSpringLen','lpSpringLenVal');
     bindOutput('lpRepulsion','lpRepulsionVal');
     bindOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
@@ -1230,6 +1243,7 @@
     $id('lpFontSize').addEventListener('input', function(){ applyFontSize(parseFloat(this.value)); });
     $id('lpShowLabels').addEventListener('change', function(){ applyShowLabels(this.checked); });
     $id('lpNodeSize').addEventListener('input', function(){ applyNodeSizeToAll(parseFloat(this.value)); });
+    $id('lpSizeContrast').addEventListener('input', function(){ applyNodeSizeToAll(parseFloat($id('lpNodeSize').value)); });
 
     // ---- Live physics handlers ----
     function applyPhysicsLive(){
@@ -1281,6 +1295,8 @@
       $id('lpShowLabels').checked = SITE_DEFAULTS.showLabels;
       $id('lpNodeSize').value = SITE_DEFAULTS.nodeSize;
       syncOutput('lpNodeSize','lpNodeSizeVal');
+      $id('lpSizeContrast').value = SITE_DEFAULTS.sizeContrast;
+      syncOutput('lpSizeContrast','lpSizeContrastVal', function(v){ return v + '×'; });
       $id('lpSolver').value = SITE_DEFAULTS.solver;
       updateLabelsFor(SITE_DEFAULTS.solver);
       loadSolverDefaultsIntoUI(SITE_DEFAULTS.solver);
@@ -1308,6 +1324,7 @@
         fontSize:        $id('lpFontSize').value,
         showLabels:      $id('lpShowLabels').checked,
         nodeSize:        $id('lpNodeSize').value,
+        sizeContrast:    $id('lpSizeContrast').value,
         solver:          $id('lpSolver').value,
         springLen:       $id('lpSpringLen').value,
         repulsion:       $id('lpRepulsion').value,
@@ -1329,6 +1346,7 @@
       if(data.fontSize !== undefined) $id('lpFontSize').value = data.fontSize;
       if(data.showLabels !== undefined) $id('lpShowLabels').checked = data.showLabels;
       if(data.nodeSize !== undefined) $id('lpNodeSize').value = data.nodeSize;
+      if(data.sizeContrast !== undefined) $id('lpSizeContrast').value = data.sizeContrast;
       if(data.solver) $id('lpSolver').value = data.solver;
       if(data.repulsionMax) $id('lpRepulsion').max = data.repulsionMax;
       if(data.springLen !== undefined) $id('lpSpringLen').value = data.springLen;
@@ -1340,6 +1358,7 @@
       // refresh outputs
       syncOutput('lpFontSize','lpFontSizeVal');
       syncOutput('lpNodeSize','lpNodeSizeVal');
+      syncOutput('lpSizeContrast','lpSizeContrastVal', function(v){ return v + '×'; });
       syncOutput('lpSpringLen','lpSpringLenVal');
       syncOutput('lpRepulsion','lpRepulsionVal');
       syncOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
@@ -1353,7 +1372,7 @@
     }
 
     // wire saving on every relevant input
-    ['lpFontSize','lpShowLabels','lpNodeSize','lpSolver','lpSpringLen','lpRepulsion','lpCentralGravity','lpSpringConst','lpDamping','lpAvoidOverlap'].forEach(function(id){
+    ['lpFontSize','lpShowLabels','lpNodeSize','lpSizeContrast','lpSolver','lpSpringLen','lpRepulsion','lpCentralGravity','lpSpringConst','lpDamping','lpAvoidOverlap'].forEach(function(id){
       $id(id).addEventListener('input', saveLayoutSettings);
       $id(id).addEventListener('change', saveLayoutSettings);
     });
