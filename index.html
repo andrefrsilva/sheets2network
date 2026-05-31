@@ -654,6 +654,11 @@
         <span style="flex:1;">Avoid node overlap</span>
       </label>
 
+      <label class="lp-row">
+        <input type="checkbox" id="lpConfineCanvas">
+        <span style="flex:1;">Confine nodes to canvas (hard walls)</span>
+      </label>
+
       <div class="lp-actions">
         <button type="button" id="lpStabilize" class="button">Re-stabilize</button>
         <button type="button" id="lpResetLayout" class="button-outline btn">Reset to defaults</button>
@@ -1313,6 +1318,8 @@
       applySpringLengthToEdges(SITE_DEFAULTS.barnesHut.springLength);
       pushUIToPhysicsOptions();
       network.setOptions({ physics: options.physics });
+      $id('lpConfineCanvas').checked = false;
+      stopConfine();
       try { localStorage.removeItem(LP_STORAGE_KEY); } catch(e){}
       try { network.stabilize(); } catch(e){}
     });
@@ -1332,7 +1339,8 @@
         centralGravity:  $id('lpCentralGravity').value,
         springConstant:  $id('lpSpringConst').value,
         damping:         $id('lpDamping').value,
-        avoidOverlap:    $id('lpAvoidOverlap').checked
+        avoidOverlap:    $id('lpAvoidOverlap').checked,
+        confineCanvas:   $id('lpConfineCanvas').checked
       };
       try { localStorage.setItem(LP_STORAGE_KEY, JSON.stringify(data)); } catch(e){}
     }
@@ -1355,6 +1363,7 @@
       if(data.springConstant !== undefined) $id('lpSpringConst').value = data.springConstant;
       if(data.damping !== undefined) $id('lpDamping').value = data.damping;
       if(data.avoidOverlap !== undefined) $id('lpAvoidOverlap').checked = data.avoidOverlap;
+      if(data.confineCanvas !== undefined) $id('lpConfineCanvas').checked = data.confineCanvas;
       // refresh outputs
       syncOutput('lpFontSize','lpFontSizeVal');
       syncOutput('lpNodeSize','lpNodeSizeVal');
@@ -1372,13 +1381,76 @@
     }
 
     // wire saving on every relevant input
-    ['lpFontSize','lpShowLabels','lpNodeSize','lpSizeContrast','lpSolver','lpSpringLen','lpRepulsion','lpCentralGravity','lpSpringConst','lpDamping','lpAvoidOverlap'].forEach(function(id){
+    ['lpFontSize','lpShowLabels','lpNodeSize','lpSizeContrast','lpSolver','lpSpringLen','lpRepulsion','lpCentralGravity','lpSpringConst','lpDamping','lpAvoidOverlap','lpConfineCanvas'].forEach(function(id){
       $id(id).addEventListener('input', saveLayoutSettings);
       $id(id).addEventListener('change', saveLayoutSettings);
     });
 
+    // ---- Confine nodes to canvas (hard walls) ----
+    var confineActive = false;
+    var confineRafId = null;
+    function getNodeRadius(id){
+      var n = nodes.get(id);
+      if(!n) return 10;
+      var s = n.size;
+      if(typeof s !== 'number' || isNaN(s)) s = 25;
+      // dots/shapes have radius ≈ size; images are size×size, so half-side ≈ size
+      return Math.max(4, s);
+    }
+    function confineTick(){
+      if(!confineActive){ confineRafId = null; return; }
+      // bounds in network coordinates
+      var w = container.clientWidth, h = container.clientHeight;
+      if(w <= 0 || h <= 0){
+        confineRafId = requestAnimationFrame(confineTick);
+        return;
+      }
+      var tl, br;
+      try {
+        tl = network.DOMtoCanvas({ x: 0, y: 0 });
+        br = network.DOMtoCanvas({ x: w, y: h });
+      } catch(e){
+        confineRafId = requestAnimationFrame(confineTick);
+        return;
+      }
+      var left = Math.min(tl.x, br.x), right = Math.max(tl.x, br.x);
+      var top  = Math.min(tl.y, br.y), bottom = Math.max(tl.y, br.y);
+
+      var positions = network.getPositions();
+      var ids = Object.keys(positions);
+      for(var i = 0; i < ids.length; i++){
+        var id = ids[i];
+        var p = positions[id];
+        var r = getNodeRadius(id);
+        var cx = p.x, cy = p.y, changed = false;
+        if(cx - r < left)   { cx = left   + r; changed = true; }
+        if(cx + r > right)  { cx = right  - r; changed = true; }
+        if(cy - r < top)    { cy = top    + r; changed = true; }
+        if(cy + r > bottom) { cy = bottom - r; changed = true; }
+        if(changed){
+          try { network.moveNode(id, cx, cy); } catch(e){}
+        }
+      }
+      confineRafId = requestAnimationFrame(confineTick);
+    }
+    function startConfine(){
+      if(confineActive) return;
+      confineActive = true;
+      confineTick();
+    }
+    function stopConfine(){
+      confineActive = false;
+      if(confineRafId){ try { cancelAnimationFrame(confineRafId); } catch(e){} }
+      confineRafId = null;
+    }
+    $id('lpConfineCanvas').addEventListener('change', function(){
+      if(this.checked) startConfine(); else stopConfine();
+    });
+
     // load saved values on startup (after listeners are wired)
     loadLayoutSettings();
+    // honour confine state from storage
+    if($id('lpConfineCanvas').checked) startConfine();
 
     // expose so processExcel can call after loading new data
     window.__lpReapply = function(){
