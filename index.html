@@ -550,6 +550,22 @@
       font-size: 12px; font-family: var(--font);
       background: var(--surface); color: var(--text);
     }
+    /* Linha auxiliar (input numérico livre por baixo do slider) */
+    .lp-num-row {
+      display: flex; align-items: center;
+      padding: 0 0 4px 130px; /* aligned with .lp-row > span flex-basis */
+      font-size: 11px; color: var(--text-muted);
+      gap: 6px;
+    }
+    .lp-num-row label { font-size: 10px; opacity: 0.7; }
+    .lp-num-row input[type="number"] {
+      width: 100%; max-width: 140px;
+      padding: 3px 6px;
+      border: 1px solid var(--border); border-radius: 3px;
+      font-family: var(--mono); font-size: 11px;
+      background: var(--surface); color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
     .layout-grid { overflow: hidden; }
     .lp-section-title {
       grid-column: 1 / -1;
@@ -648,26 +664,34 @@
       <label class="lp-row">
         <span>Node size</span>
         <input type="range" id="lpNodeSize" min="5" max="100" value="25" step="1">
-        <output id="lpNodeSizeVal">25</output>
       </label>
+      <div class="lp-num-row">
+        <input type="number" id="lpNodeSizeNum" value="25" step="any" min="0" title="Valor livre (qualquer ordem de magnitude)">
+      </div>
       <label class="lp-row">
         <span>Size contrast</span>
         <input type="range" id="lpSizeContrast" min="1" max="50" value="6" step="1">
-        <output id="lpSizeContrastVal">6×</output>
       </label>
+      <div class="lp-num-row">
+        <input type="number" id="lpSizeContrastNum" value="6" step="any" min="0" title="Expoente livre (qualquer ordem de magnitude)">
+      </div>
 
       <div class="lp-section-title">Edges</div>
 
       <label class="lp-row">
         <span>Edge thickness</span>
         <input type="range" id="lpEdgeThickness" min="1" max="50" value="10" step="1">
-        <input type="number" id="lpEdgeThicknessNum" value="1" step="any" min="0" style="width:78px;font-variant-numeric:tabular-nums" title="Multiplier livre — aceita qualquer valor (0.0000001 a 10000000)">
       </label>
+      <div class="lp-num-row">
+        <input type="number" id="lpEdgeThicknessNum" value="1" step="any" min="0" title="Multiplier livre — aceita 0.0000001 a 10000000">
+      </div>
       <label class="lp-row">
         <span>Edge contrast</span>
         <input type="range" id="lpEdgeContrast" min="1" max="30" value="10" step="1">
-        <output id="lpEdgeContrastVal">1.0</output>
       </label>
+      <div class="lp-num-row">
+        <input type="number" id="lpEdgeContrastNum" value="1" step="any" min="0" title="Expoente livre (qualquer ordem de magnitude)">
+      </div>
 
       <div class="lp-section-title">Physics</div>
 
@@ -1244,7 +1268,9 @@
     //   C = 1   → all nodes equal (lo = hi = 1)
     //   C = N   → smallest = base/sqrt(N), largest = base*sqrt(N)   ⇒ ratio max/min = N
     function applyNodeSizeToAll(baseSize){
-      var contrast = parseFloat($id('lpSizeContrast') ? $id('lpSizeContrast').value : 6);
+      // Contraste: input numérico livre (source of truth), fallback ao slider
+      var contrast = parseFloat($id('lpSizeContrastNum') ? $id('lpSizeContrastNum').value : NaN);
+      if(isNaN(contrast)) contrast = parseFloat($id('lpSizeContrast') ? $id('lpSizeContrast').value : 6);
       if(isNaN(contrast) || contrast < 1) contrast = 1;
 
       var minVal = Infinity, maxVal = 1;
@@ -1297,10 +1323,11 @@
     function edgeContrastFromSlider(v){ return 0.1 + (v - 1) / (30 - 1) * (3 - 0.1); }
 
     function applyEdgeThickness(){
-      // Multiplier vem do input numérico (source of truth — pode ser qualquer valor positivo).
+      // Multiplier e contrast vêm dos inputs numéricos (source of truth — qualquer valor positivo).
       var multiplier = parseFloat($id('lpEdgeThicknessNum').value);
       if (!isFinite(multiplier) || multiplier < 0) multiplier = edgeMultiplierFromSlider(parseFloat($id('lpEdgeThickness').value));
-      var contrast   = edgeContrastFromSlider(parseFloat($id('lpEdgeContrast').value));
+      var contrast   = parseFloat($id('lpEdgeContrastNum').value);
+      if (!isFinite(contrast) || contrast < 0) contrast = edgeContrastFromSlider(parseFloat($id('lpEdgeContrast').value));
 
       // collect raw weights to compute log range
       var rawVals = [];
@@ -1344,41 +1371,68 @@
       r.addEventListener('input', function(){ o.value = fmt(parseFloat(r.value)); });
     }
     bindOutput('lpFontSize','lpFontSizeVal');
-    bindOutput('lpNodeSize','lpNodeSizeVal');
-    bindOutput('lpSizeContrast','lpSizeContrastVal', function(v){ return v + '×'; });
-    bindOutput('lpEdgeContrast','lpEdgeContrastVal', function(v){ return edgeContrastFromSlider(v).toFixed(1); });
 
-    // Edge thickness multiplier: slider <-> input numérico (sync bidirecional).
-    // O input numérico aceita qualquer valor (0.0000001 a 10000000+).
-    (function(){
-      var slider = $id('lpEdgeThickness');
-      var num    = $id('lpEdgeThicknessNum');
-      var SLIDER_MIN_MULT = 0.2, SLIDER_MAX_MULT = 5.0;
-      function fmtMult(m){
-        if (m === 0) return '0';
-        var abs = Math.abs(m);
-        if (abs >= 100) return m.toFixed(0);
-        if (abs >= 1)   return parseFloat(m.toFixed(3)).toString();
-        if (abs >= 0.001) return parseFloat(m.toFixed(4)).toString();
-        return m.toExponential(2);
-      }
-      // Slider muda → escreve no input + recalcula
+    // ---- Helpers para sincronizar slider <-> input numérico livre ----
+    function fmtFree(m){
+      if (m === 0) return '0';
+      var abs = Math.abs(m);
+      if (abs >= 100) return parseFloat(m.toFixed(2)).toString();
+      if (abs >= 1)   return parseFloat(m.toFixed(3)).toString();
+      if (abs >= 0.001) return parseFloat(m.toFixed(4)).toString();
+      return m.toExponential(2);
+    }
+    /** sliderToValue(sliderVal) → "real" value | valueToSlider(realVal) → slider integer (clamped). */
+    function pairSliderNum(sliderId, numId, sliderToValue, valueToSlider, onApply){
+      var slider = $id(sliderId), num = $id(numId);
       slider.addEventListener('input', function(){
-        var m = edgeMultiplierFromSlider(parseFloat(slider.value));
-        num.value = fmtMult(m);
+        var v = sliderToValue(parseFloat(slider.value));
+        num.value = fmtFree(v);
+        if (onApply) onApply();
       });
-      // Input muda → ajusta slider (clamp ao range visual) + recalcula
-      function onNumChange(){
-        var m = parseFloat(num.value);
-        if (!isFinite(m) || m < 0) return;
-        var clamped = Math.min(SLIDER_MAX_MULT, Math.max(SLIDER_MIN_MULT, m));
-        var sliderVal = 1 + (clamped - 0.2) / (5 - 0.2) * (50 - 1);
-        slider.value = Math.round(sliderVal);
-        applyEdgeThickness();
+      function onNum(){
+        var v = parseFloat(num.value);
+        if (!isFinite(v)) return;
+        var s = valueToSlider(v);
+        if (isFinite(s)) slider.value = s;
+        if (onApply) onApply();
       }
-      num.addEventListener('input', onNumChange);
-      num.addEventListener('change', onNumChange);
-    })();
+      num.addEventListener('input', onNum);
+      num.addEventListener('change', onNum);
+    }
+
+    // Node size: direct mapping (5–100). Input livre permite >100 ou <5.
+    pairSliderNum('lpNodeSize','lpNodeSizeNum',
+      function(s){ return s; },
+      function(v){ return Math.min(100, Math.max(5, Math.round(v))); },
+      function(){ applyNodeSizeToAll(parseFloat($id('lpNodeSizeNum').value)); }
+    );
+
+    // Size contrast: direct mapping (1–50). Input livre permite qualquer valor.
+    pairSliderNum('lpSizeContrast','lpSizeContrastNum',
+      function(s){ return s; },
+      function(v){ return Math.min(50, Math.max(1, Math.round(v))); },
+      function(){ applyNodeSizeToAll(parseFloat($id('lpNodeSizeNum').value)); }
+    );
+
+    // Edge thickness multiplier (slider 1-50 → 0.2x-5x). Input livre = any.
+    pairSliderNum('lpEdgeThickness','lpEdgeThicknessNum',
+      function(s){ return edgeMultiplierFromSlider(s); },
+      function(v){
+        var clamped = Math.min(5, Math.max(0.2, v));
+        return Math.round(1 + (clamped - 0.2) / (5 - 0.2) * (50 - 1));
+      },
+      function(){ applyEdgeThickness(); }
+    );
+
+    // Edge contrast (slider 1-30 → 0.1-3). Input livre.
+    pairSliderNum('lpEdgeContrast','lpEdgeContrastNum',
+      function(s){ return edgeContrastFromSlider(s); },
+      function(v){
+        var clamped = Math.min(3, Math.max(0.1, v));
+        return Math.round(1 + (clamped - 0.1) / (3 - 0.1) * (30 - 1));
+      },
+      function(){ applyEdgeThickness(); }
+    );
     bindOutput('lpSpringLen','lpSpringLenVal');
     bindOutput('lpRepulsion','lpRepulsionVal');
     bindOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
@@ -1386,12 +1440,9 @@
     bindOutput('lpDamping','lpDampingVal', function(v){ return (v/100).toFixed(2); });
 
     // ---- Live visual handlers ----
+    // (Node size / Size contrast / Edge thickness / Edge contrast já estão ligados via pairSliderNum acima.)
     $id('lpFontSize').addEventListener('input', function(){ applyFontSize(parseFloat(this.value)); });
     $id('lpShowLabels').addEventListener('change', function(){ applyShowLabels(this.checked); });
-    $id('lpNodeSize').addEventListener('input', function(){ applyNodeSizeToAll(parseFloat(this.value)); });
-    $id('lpSizeContrast').addEventListener('input', function(){ applyNodeSizeToAll(parseFloat($id('lpNodeSize').value)); });
-    $id('lpEdgeThickness').addEventListener('input', function(){ applyEdgeThickness(); });
-    $id('lpEdgeContrast').addEventListener('input', function(){ applyEdgeThickness(); });
 
     // ---- Live physics handlers ----
     function applyPhysicsLive(){
@@ -1442,13 +1493,13 @@
       syncOutput('lpFontSize','lpFontSizeVal');
       $id('lpShowLabels').checked = SITE_DEFAULTS.showLabels;
       $id('lpNodeSize').value = SITE_DEFAULTS.nodeSize;
-      syncOutput('lpNodeSize','lpNodeSizeVal');
+      $id('lpNodeSizeNum').value = SITE_DEFAULTS.nodeSize;
       $id('lpSizeContrast').value = SITE_DEFAULTS.sizeContrast;
-      syncOutput('lpSizeContrast','lpSizeContrastVal', function(v){ return v + '×'; });
+      $id('lpSizeContrastNum').value = SITE_DEFAULTS.sizeContrast;
       $id('lpEdgeThickness').value = 10;
       $id('lpEdgeThicknessNum').value = '1';
       $id('lpEdgeContrast').value = 10;
-      syncOutput('lpEdgeContrast','lpEdgeContrastVal', function(v){ return edgeContrastFromSlider(v).toFixed(1); });
+      $id('lpEdgeContrastNum').value = '1';
       $id('lpSolver').value = SITE_DEFAULTS.solver;
       updateLabelsFor(SITE_DEFAULTS.solver);
       loadSolverDefaultsIntoUI(SITE_DEFAULTS.solver);
@@ -1478,10 +1529,13 @@
         fontSize:        $id('lpFontSize').value,
         showLabels:      $id('lpShowLabels').checked,
         nodeSize:        $id('lpNodeSize').value,
+        nodeSizeNum:     $id('lpNodeSizeNum').value,
         sizeContrast:    $id('lpSizeContrast').value,
+        sizeContrastNum: $id('lpSizeContrastNum').value,
         edgeThickness:   $id('lpEdgeThickness').value,
         edgeThicknessNum:$id('lpEdgeThicknessNum').value,
         edgeContrast:    $id('lpEdgeContrast').value,
+        edgeContrastNum: $id('lpEdgeContrastNum').value,
         solver:          $id('lpSolver').value,
         springLen:       $id('lpSpringLen').value,
         repulsion:       $id('lpRepulsion').value,
@@ -1504,10 +1558,15 @@
       if(data.fontSize !== undefined) $id('lpFontSize').value = data.fontSize;
       if(data.showLabels !== undefined) $id('lpShowLabels').checked = data.showLabels;
       if(data.nodeSize !== undefined) $id('lpNodeSize').value = data.nodeSize;
+      if(data.nodeSizeNum !== undefined) $id('lpNodeSizeNum').value = data.nodeSizeNum;
+      else if(data.nodeSize !== undefined) $id('lpNodeSizeNum').value = data.nodeSize;
       if(data.sizeContrast !== undefined) $id('lpSizeContrast').value = data.sizeContrast;
+      if(data.sizeContrastNum !== undefined) $id('lpSizeContrastNum').value = data.sizeContrastNum;
+      else if(data.sizeContrast !== undefined) $id('lpSizeContrastNum').value = data.sizeContrast;
       if(data.edgeThickness !== undefined) $id('lpEdgeThickness').value = data.edgeThickness;
       if(data.edgeThicknessNum !== undefined) $id('lpEdgeThicknessNum').value = data.edgeThicknessNum;
       if(data.edgeContrast !== undefined) $id('lpEdgeContrast').value = data.edgeContrast;
+      if(data.edgeContrastNum !== undefined) $id('lpEdgeContrastNum').value = data.edgeContrastNum;
       if(data.solver) $id('lpSolver').value = data.solver;
       if(data.repulsionMax) $id('lpRepulsion').max = data.repulsionMax;
       if(data.springLen !== undefined) $id('lpSpringLen').value = data.springLen;
@@ -1517,11 +1576,8 @@
       if(data.damping !== undefined) $id('lpDamping').value = data.damping;
       if(data.avoidOverlap !== undefined) $id('lpAvoidOverlap').checked = data.avoidOverlap;
       if(data.confineCanvas !== undefined) $id('lpConfineCanvas').checked = data.confineCanvas;
-      // refresh outputs
+      // refresh outputs (apenas para os controlos que ainda usam <output>)
       syncOutput('lpFontSize','lpFontSizeVal');
-      syncOutput('lpNodeSize','lpNodeSizeVal');
-      syncOutput('lpSizeContrast','lpSizeContrastVal', function(v){ return v + '×'; });
-      syncOutput('lpEdgeContrast','lpEdgeContrastVal', function(v){ return edgeContrastFromSlider(v).toFixed(1); });
       syncOutput('lpSpringLen','lpSpringLenVal');
       syncOutput('lpRepulsion','lpRepulsionVal');
       syncOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
