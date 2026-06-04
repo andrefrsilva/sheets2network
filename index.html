@@ -2209,6 +2209,19 @@
         if(typeof window.__lpReapply === 'function'){ try { window.__lpReapply(); } catch(e){} }
         else if(typeof window.__lpReapplyEdges === 'function'){ try { window.__lpReapplyEdges(); } catch(e){} }
 
+        // Force per-node color from dataset. vis.js may ignore the initial color
+        // string when `group` is set on the node (it falls back to a default group
+        // colour). Re-applying the colour from the dataset after setData fixes it.
+        // This is the same path that the group-filter toggle uses (which the user
+        // observed "fixed" the colours after init).
+        try {
+          var colorUpdates = [];
+          nodes.forEach(function(n){
+            if(n.color) colorUpdates.push({id:n.id, color:n.color});
+          });
+          if(colorUpdates.length) nodes.update(colorUpdates);
+        } catch(e){}
+
       }catch(err){console.error(err);addErrorLine("Error processing Excel: "+err.message);}
     };
     reader.readAsBinaryString(blob);
