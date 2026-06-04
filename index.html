@@ -1832,8 +1832,26 @@
   var currentColorGrading=null;
   function renderColorGradingToggles(){
     var ct=document.getElementById("colorGradingToggles"); ct.innerHTML="";
-    if(!sortColumns.length)return;
+    // Há pelo menos um botão se há sortColumns OU groups
+    var hasGroups = Object.keys(groupFilters).length > 0;
+    if(!sortColumns.length && !hasGroups) return;
+
     var label=document.createElement("span"); label.style.fontWeight="bold"; label.style.fontSize="13px"; label.innerText="Color Grading: "; ct.appendChild(label);
+
+    // Botão GROUP (independente das colunas numéricas)
+    if(hasGroups){
+      var gbtn=document.createElement("button"); gbtn.classList.add("toggleBtn");
+      if(currentColorGrading!=="__group__") gbtn.classList.add("off");
+      gbtn.innerText="GROUP";
+      gbtn.onclick=function(){
+        toggleColorGrading("__group__");
+        ct.querySelectorAll(".toggleBtn").forEach(s=>s.classList.add("off"));
+        if(currentColorGrading==="__group__") gbtn.classList.remove("off");
+        buildKanban();
+      };
+      ct.appendChild(gbtn);
+    }
+
     sortColumns.forEach(function(colName){
       var btn=document.createElement("button"); btn.classList.add("toggleBtn");
       if(currentColorGrading!==colName) btn.classList.add("off");
@@ -1849,9 +1867,27 @@
   }
   function toggleColorGrading(colName){
     if(currentColorGrading===colName){resetNodeColors();currentColorGrading=null;}
+    else if(colName==="__group__"){applyColorByGroup();currentColorGrading="__group__";}
     else{applyColorGrading(colName);currentColorGrading=colName;}
   }
   function resetNodeColors(){nodes.forEach(n=>{nodes.update({id:n.id,color:n.originalColor});});}
+
+  // Hash string → cor pastel saturada estável (mesma string sempre devolve a mesma cor)
+  function colorForGroup(name){
+    if(!name) return "#888888";
+    var h = 0;
+    for(var i=0; i<name.length; i++){ h = ((h<<5) - h) + name.charCodeAt(i); h |= 0; }
+    var hue = Math.abs(h) % 360;
+    return "hsl(" + hue + ",65%,55%)";
+  }
+  function applyColorByGroup(){
+    var updates = [];
+    nodes.forEach(function(n){
+      var c = n.group ? colorForGroup(n.group) : (n.originalColor || "#888888");
+      updates.push({id:n.id, color:c});
+    });
+    if(updates.length) nodes.update(updates);
+  }
 
   var negativeGradient=generateGradient("#0000FF","#000000",10);
   var positiveGradient=generateGradient("#000000","#FF0000",10);
