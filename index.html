@@ -656,6 +656,19 @@
         <output id="lpSizeContrastVal">6×</output>
       </label>
 
+      <div class="lp-section-title">Edges</div>
+
+      <label class="lp-row">
+        <span>Edge thickness</span>
+        <input type="range" id="lpEdgeThickness" min="1" max="50" value="10" step="1">
+        <output id="lpEdgeThicknessVal">1.0×</output>
+      </label>
+      <label class="lp-row">
+        <span>Edge contrast</span>
+        <input type="range" id="lpEdgeContrast" min="1" max="30" value="10" step="1">
+        <output id="lpEdgeContrastVal">1.0</output>
+      </label>
+
       <div class="lp-section-title">Physics</div>
 
       <label class="lp-row">
@@ -1273,6 +1286,46 @@
       network.redraw();
     }
 
+    // ---- Apply edge thickness + contrast ----
+    // Raw value is stored in e.rawWidth (set during processExcel).
+    // multiplier: slider 1-50 → mapped 0.2× to 5× (value 10 = 1.0×)
+    // contrast: slider 1-30 → mapped 0.1 to 3.0 (value 10 = 1.0)
+    // ratio = log-normalised 0..1 across all edge rawWidth values
+    // final width = max(0.5, minW + (maxW - minW) * ratio^contrast) * multiplier
+    // where minW=0.5, maxW=10 (same range as before, but now scaled)
+    function edgeMultiplierFromSlider(v){ return 0.2 + (v - 1) / (50 - 1) * (5 - 0.2); }
+    function edgeContrastFromSlider(v){ return 0.1 + (v - 1) / (30 - 1) * (3 - 0.1); }
+
+    function applyEdgeThickness(){
+      var multiplier = edgeMultiplierFromSlider(parseFloat($id('lpEdgeThickness').value));
+      var contrast   = edgeContrastFromSlider(parseFloat($id('lpEdgeContrast').value));
+
+      // collect raw weights to compute log range
+      var rawVals = [];
+      edges.forEach(function(e){
+        var rw = (typeof e.rawWidth === 'number') ? e.rawWidth : parseFloat(e.rawWidth);
+        if(!isNaN(rw) && rw > 0) rawVals.push(rw);
+      });
+
+      var minRaw = rawVals.length ? Math.min.apply(null, rawVals) : 1;
+      var maxRaw = rawVals.length ? Math.max.apply(null, rawVals) : 1;
+      var logMin = Math.log(Math.max(0.0001, minRaw));
+      var logMax = Math.log(Math.max(0.0001, maxRaw));
+      var logRange = logMax - logMin;
+
+      var BASE_MIN = 0.5, BASE_MAX = 10;
+
+      var updates = [];
+      edges.forEach(function(e){
+        var rw = (typeof e.rawWidth === 'number') ? e.rawWidth : parseFloat(e.rawWidth);
+        if(isNaN(rw) || rw <= 0) rw = 0.5;
+        var ratio = (logRange > 0) ? (Math.log(Math.max(0.0001, rw)) - logMin) / logRange : 1;
+        var w = (BASE_MIN + (BASE_MAX - BASE_MIN) * Math.pow(ratio, contrast)) * multiplier;
+        updates.push({ id: e.id, width: Math.max(0.3, w) });
+      });
+      if(updates.length) edges.update(updates);
+    }
+
     // ---- Apply visuals (font, labels) directly ----
     function applyFontSize(v){ network.setOptions({ nodes: { font: { size: v } } }); }
     function applyShowLabels(show){ network.setOptions({ nodes: { font: { color: show ? '#000000' : 'rgba(0,0,0,0)' } } }); }
@@ -1291,6 +1344,8 @@
     bindOutput('lpFontSize','lpFontSizeVal');
     bindOutput('lpNodeSize','lpNodeSizeVal');
     bindOutput('lpSizeContrast','lpSizeContrastVal', function(v){ return v + '×'; });
+    bindOutput('lpEdgeThickness','lpEdgeThicknessVal', function(v){ return edgeMultiplierFromSlider(v).toFixed(1)+'×'; });
+    bindOutput('lpEdgeContrast','lpEdgeContrastVal', function(v){ return edgeContrastFromSlider(v).toFixed(1); });
     bindOutput('lpSpringLen','lpSpringLenVal');
     bindOutput('lpRepulsion','lpRepulsionVal');
     bindOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
@@ -1302,6 +1357,8 @@
     $id('lpShowLabels').addEventListener('change', function(){ applyShowLabels(this.checked); });
     $id('lpNodeSize').addEventListener('input', function(){ applyNodeSizeToAll(parseFloat(this.value)); });
     $id('lpSizeContrast').addEventListener('input', function(){ applyNodeSizeToAll(parseFloat($id('lpNodeSize').value)); });
+    $id('lpEdgeThickness').addEventListener('input', function(){ applyEdgeThickness(); });
+    $id('lpEdgeContrast').addEventListener('input', function(){ applyEdgeThickness(); });
 
     // ---- Live physics handlers ----
     function applyPhysicsLive(){
@@ -1355,6 +1412,10 @@
       syncOutput('lpNodeSize','lpNodeSizeVal');
       $id('lpSizeContrast').value = SITE_DEFAULTS.sizeContrast;
       syncOutput('lpSizeContrast','lpSizeContrastVal', function(v){ return v + '×'; });
+      $id('lpEdgeThickness').value = 10;
+      syncOutput('lpEdgeThickness','lpEdgeThicknessVal', function(v){ return edgeMultiplierFromSlider(v).toFixed(1)+'×'; });
+      $id('lpEdgeContrast').value = 10;
+      syncOutput('lpEdgeContrast','lpEdgeContrastVal', function(v){ return edgeContrastFromSlider(v).toFixed(1); });
       $id('lpSolver').value = SITE_DEFAULTS.solver;
       updateLabelsFor(SITE_DEFAULTS.solver);
       loadSolverDefaultsIntoUI(SITE_DEFAULTS.solver);
@@ -1385,6 +1446,8 @@
         showLabels:      $id('lpShowLabels').checked,
         nodeSize:        $id('lpNodeSize').value,
         sizeContrast:    $id('lpSizeContrast').value,
+        edgeThickness:   $id('lpEdgeThickness').value,
+        edgeContrast:    $id('lpEdgeContrast').value,
         solver:          $id('lpSolver').value,
         springLen:       $id('lpSpringLen').value,
         repulsion:       $id('lpRepulsion').value,
@@ -1408,6 +1471,8 @@
       if(data.showLabels !== undefined) $id('lpShowLabels').checked = data.showLabels;
       if(data.nodeSize !== undefined) $id('lpNodeSize').value = data.nodeSize;
       if(data.sizeContrast !== undefined) $id('lpSizeContrast').value = data.sizeContrast;
+      if(data.edgeThickness !== undefined) $id('lpEdgeThickness').value = data.edgeThickness;
+      if(data.edgeContrast !== undefined) $id('lpEdgeContrast').value = data.edgeContrast;
       if(data.solver) $id('lpSolver').value = data.solver;
       if(data.repulsionMax) $id('lpRepulsion').max = data.repulsionMax;
       if(data.springLen !== undefined) $id('lpSpringLen').value = data.springLen;
@@ -1421,6 +1486,8 @@
       syncOutput('lpFontSize','lpFontSizeVal');
       syncOutput('lpNodeSize','lpNodeSizeVal');
       syncOutput('lpSizeContrast','lpSizeContrastVal', function(v){ return v + '×'; });
+      syncOutput('lpEdgeThickness','lpEdgeThicknessVal', function(v){ return edgeMultiplierFromSlider(v).toFixed(1)+'×'; });
+      syncOutput('lpEdgeContrast','lpEdgeContrastVal', function(v){ return edgeContrastFromSlider(v).toFixed(1); });
       syncOutput('lpSpringLen','lpSpringLenVal');
       syncOutput('lpRepulsion','lpRepulsionVal');
       syncOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
@@ -1434,7 +1501,7 @@
     }
 
     // wire saving on every relevant input
-    ['lpFontSize','lpShowLabels','lpNodeSize','lpSizeContrast','lpSolver','lpSpringLen','lpRepulsion','lpCentralGravity','lpSpringConst','lpDamping','lpAvoidOverlap','lpConfineCanvas'].forEach(function(id){
+    ['lpFontSize','lpShowLabels','lpNodeSize','lpSizeContrast','lpEdgeThickness','lpEdgeContrast','lpSolver','lpSpringLen','lpRepulsion','lpCentralGravity','lpSpringConst','lpDamping','lpAvoidOverlap','lpConfineCanvas'].forEach(function(id){
       $id(id).addEventListener('input', saveLayoutSettings);
       $id(id).addEventListener('change', saveLayoutSettings);
     });
@@ -1517,7 +1584,10 @@
       applySpringLengthToEdges(parseFloat($id('lpSpringLen').value));
       pushUIToPhysicsOptions();
       network.setOptions({ physics: options.physics });
+      applyEdgeThickness();
     };
+    // expose separately so it can be called after edges dataset changes
+    window.__lpReapplyEdges = function(){ applyEdgeThickness(); };
   }
   setupLayoutPanel();
 
@@ -1965,6 +2035,7 @@
           var rawVal=row[3];
           var val=(row[3]?parseFloat(row[3]):undefined);
           if(rawVal!==undefined&&rawVal!==null&&rawVal!==""&&isNaN(parseFloat(rawVal)))nonNumericVals.push({row:rowNum,value:rawVal});
+          var rawWeight=(val!==undefined&&!isNaN(val))?Math.abs(val):0.5;
           var thickness=0.5,length=100;
           if(val!==undefined&&!isNaN(val)){thickness=Math.max(0.5,0.5+(val/100)*(10-0.5));length=Math.max(1,5-(val/100)*(5-1));}
 
@@ -1989,7 +2060,7 @@
             id:edgeId, from:fromNode, to:toNode,
             arrows:(relation==="link"?"":"to"),
             color:colorE, originalColor:colorE, dashes:dashes,
-            title:title, width:thickness, length:length
+            title:title, width:thickness, rawWidth:rawWeight, length:length
           });
         });
 
@@ -2044,8 +2115,9 @@
         let isolated=Object.keys(deg).filter(id=>deg[id]===0);
         if(isolated.length)addSummarizedListError("Isolated nodes (degree=0)",isolated.map(id=>nodes.get(id)?.label||id));
 
-        // Re-apply current layout-panel settings so node size / spring length stick across loads
+        // Re-apply current layout-panel settings so node size / spring length / edge thickness stick across loads
         if(typeof window.__lpReapply === 'function'){ try { window.__lpReapply(); } catch(e){} }
+        else if(typeof window.__lpReapplyEdges === 'function'){ try { window.__lpReapplyEdges(); } catch(e){} }
 
       }catch(err){console.error(err);addErrorLine("Error processing Excel: "+err.message);}
     };
