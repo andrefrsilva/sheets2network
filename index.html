@@ -692,6 +692,10 @@
       <div class="lp-num-row">
         <input type="number" id="lpEdgeContrastNum" value="1" step="any" min="0" title="Expoente livre (qualquer ordem de magnitude)">
       </div>
+      <label class="lp-row">
+        <span>Edge value floor</span>
+        <input type="number" id="lpEdgeFloor" value="0" step="any" min="0" style="flex:1;max-width:160px;padding:3px 6px;border:1px solid var(--border);border-radius:3px;font-family:var(--mono);font-size:11px;background:var(--surface);color:var(--text);font-variant-numeric:tabular-nums" title="Valores abaixo deste limiar ficam com espessura mínima; o limiar passa a ser tratado como o '1' da escala proporcional. 0 = desligado.">
+      </label>
 
       <div class="lp-section-title">Physics</div>
 
@@ -1329,15 +1333,23 @@
       var contrast   = parseFloat($id('lpEdgeContrastNum').value);
       if (!isFinite(contrast) || contrast < 0) contrast = edgeContrastFromSlider(parseFloat($id('lpEdgeContrast').value));
 
-      // collect raw weights to compute log range
+      // Floor: valores raw abaixo deste limiar ficam todos com espessura mínima e o limiar
+      // passa a ser tratado como o "1" da escala proporcional. 0 ou inválido = desligado.
+      var floorEl = $id('lpEdgeFloor');
+      var floor = floorEl ? parseFloat(floorEl.value) : 0;
+      if (!isFinite(floor) || floor < 0) floor = 0;
+
+      // collect raw weights to compute log range — só dos valores >= floor (quando floor > 0)
       var rawVals = [];
       edges.forEach(function(e){
         var rw = (typeof e.rawWidth === 'number') ? e.rawWidth : parseFloat(e.rawWidth);
-        if(!isNaN(rw) && rw > 0) rawVals.push(rw);
+        if(!isNaN(rw) && rw > 0 && rw >= floor) rawVals.push(rw);
       });
 
       var minRaw = rawVals.length ? Math.min.apply(null, rawVals) : 1;
       var maxRaw = rawVals.length ? Math.max.apply(null, rawVals) : 1;
+      // Se há floor, ele substitui o min — assim a escala proporcional começa no floor.
+      if (floor > 0) minRaw = floor;
       var logMin = Math.log(Math.max(0.0001, minRaw));
       var logMax = Math.log(Math.max(0.0001, maxRaw));
       var logRange = logMax - logMin;
@@ -1348,8 +1360,15 @@
       edges.forEach(function(e){
         var rw = (typeof e.rawWidth === 'number') ? e.rawWidth : parseFloat(e.rawWidth);
         if(isNaN(rw) || rw <= 0) rw = 0.5;
-        var ratio = (logRange > 0) ? (Math.log(Math.max(0.0001, rw)) - logMin) / logRange : 1;
-        var w = (BASE_MIN + (BASE_MAX - BASE_MIN) * Math.pow(ratio, contrast)) * multiplier;
+        var w;
+        if (floor > 0 && rw < floor) {
+          // Abaixo do floor: espessura mínima fixa (ratio 0)
+          w = BASE_MIN * multiplier;
+        } else {
+          var ratio = (logRange > 0) ? (Math.log(Math.max(0.0001, rw)) - logMin) / logRange : 1;
+          if (ratio < 0) ratio = 0;
+          w = (BASE_MIN + (BASE_MAX - BASE_MIN) * Math.pow(ratio, contrast)) * multiplier;
+        }
         updates.push({ id: e.id, width: Math.max(0.3, w) });
       });
       if(updates.length) edges.update(updates);
@@ -1433,6 +1452,15 @@
       },
       function(){ applyEdgeThickness(); }
     );
+
+    // Edge value floor (input numérico isolado, sem slider)
+    (function(){
+      var floorEl = $id('lpEdgeFloor');
+      if(!floorEl) return;
+      function on(){ applyEdgeThickness(); }
+      floorEl.addEventListener('input', on);
+      floorEl.addEventListener('change', on);
+    })();
     bindOutput('lpSpringLen','lpSpringLenVal');
     bindOutput('lpRepulsion','lpRepulsionVal');
     bindOutput('lpCentralGravity','lpCentralGravityVal', function(v){ return (v/100).toFixed(2); });
@@ -1500,6 +1528,7 @@
       $id('lpEdgeThicknessNum').value = '1';
       $id('lpEdgeContrast').value = 10;
       $id('lpEdgeContrastNum').value = '1';
+      $id('lpEdgeFloor').value = '0';
       $id('lpSolver').value = SITE_DEFAULTS.solver;
       updateLabelsFor(SITE_DEFAULTS.solver);
       loadSolverDefaultsIntoUI(SITE_DEFAULTS.solver);
@@ -1536,6 +1565,7 @@
         edgeThicknessNum:$id('lpEdgeThicknessNum').value,
         edgeContrast:    $id('lpEdgeContrast').value,
         edgeContrastNum: $id('lpEdgeContrastNum').value,
+        edgeFloor:       $id('lpEdgeFloor').value,
         solver:          $id('lpSolver').value,
         springLen:       $id('lpSpringLen').value,
         repulsion:       $id('lpRepulsion').value,
@@ -1567,6 +1597,7 @@
       if(data.edgeThicknessNum !== undefined) $id('lpEdgeThicknessNum').value = data.edgeThicknessNum;
       if(data.edgeContrast !== undefined) $id('lpEdgeContrast').value = data.edgeContrast;
       if(data.edgeContrastNum !== undefined) $id('lpEdgeContrastNum').value = data.edgeContrastNum;
+      if(data.edgeFloor !== undefined) $id('lpEdgeFloor').value = data.edgeFloor;
       if(data.solver) $id('lpSolver').value = data.solver;
       if(data.repulsionMax) $id('lpRepulsion').max = data.repulsionMax;
       if(data.springLen !== undefined) $id('lpSpringLen').value = data.springLen;
