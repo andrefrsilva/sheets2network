@@ -1298,6 +1298,29 @@
       var lo = 1 / Math.sqrt(contrast);
       var hi =     Math.sqrt(contrast);
 
+      // Decide which colour to apply: respect a colour-grading override if active,
+      // otherwise use the per-node colour from the dataset (the Excel value).
+      // vis.js sometimes drops the per-node string colour during scaling updates
+      // when `group` is set, so we re-assert it on every size update.
+      var graded = currentColorGrading; // null | "__group__" | <sort_col>
+      var sortMinMax = null;
+      if (graded && graded !== "__group__") {
+        var sortVals = [];
+        nodes.forEach(function(n){
+          var sv = (n.sortData && typeof n.sortData[graded] === 'number') ? n.sortData[graded] : null;
+          if (sv !== null && !isNaN(sv)) sortVals.push(sv);
+        });
+        if (sortVals.length) sortMinMax = [Math.min.apply(null, sortVals), Math.max.apply(null, sortVals)];
+      }
+      function colorForNode(n){
+        if (graded === "__group__") return n.group ? colorForGroup(n.group) : (n.originalColor || "#888888");
+        if (graded && sortMinMax) {
+          var sv = (n.sortData && typeof n.sortData[graded] === 'number') ? n.sortData[graded] : null;
+          return (sv !== null && !isNaN(sv)) ? getGradedColor(sv, sortMinMax[0], sortMinMax[1]) : "#808080";
+        }
+        return n.color || n.originalColor;
+      }
+
       var updates = [];
       nodes.forEach(function(n){
         var v = parseFloat(n.value);
@@ -1307,7 +1330,8 @@
         updates.push({
           id: n.id,
           size: sz,
-          scaling: { min: sz, max: sz }
+          scaling: { min: sz, max: sz },
+          color: colorForNode(n)
         });
       });
       if(updates.length) nodes.update(updates);
