@@ -1341,15 +1341,12 @@ More: [open dossier](https://example.com)</pre>
   var edgeLinkSet = new Set(); // edge IDs that are "link" type (bidirectional)
 
   var options = {
-    // randomSeed + improvedLayout=false => arrangement determinístico em cada refresh.
-    // improvedLayout=true introduzia uma fase iterativa não-determinística que fazia
-    // a rede aparecer em sítios diferentes a cada reload.
-    layout: { randomSeed: 2, improvedLayout: false },
+    layout: { randomSeed: 2, improvedLayout: true },
     physics: {
       enabled: true, solver: "barnesHut",
       barnesHut: { gravitationalConstant:-8000, springLength:50, centralGravity:0.01 },
-      maxVelocity: 135, timestep: 0.3,
-      stabilization: { enabled:true, iterations:2000, updateInterval:25, onlyDynamicEdges:false, fit:true }
+      maxVelocity: 135, timestep: 0.35,
+      stabilization: { enabled:true, iterations:600, updateInterval:10, onlyDynamicEdges:false, fit:true }
     },
     nodes: {
       shape: "dot",
@@ -1450,39 +1447,22 @@ More: [open dossier](https://example.com)</pre>
   // Exposed so processExcel can call directly without scoping concerns.
   window.__renderTooltipText = renderTooltipText;
 
-  // Stabilization overlay: keep the canvas hidden while physics converges,
-  // then snapshot the final positions and freeze nodes in place so the layout
-  // never drifts — without disabling the global physics flag (so the user's
-  // "Physics engine" checkbox keeps working).
+  // Stabilization overlay: hide canvas while physics settles, show only the
+  // final layout. The container starts with class="stabilizing" in the HTML
+  // so the canvas never paints a single frame before the layout is solved.
+  // After stabilization we FREEZE physics so the network stops moving forever
+  // — clicking refresh again will reproduce the exact same layout.
   function showStabilizing(){
     container.classList.remove('stabilized');
     container.classList.add('stabilizing');
   }
   var _settled = false;
-  function freezeNodesInPlace(){
-    try {
-      var pos = network.getPositions();
-      var updates = [];
-      Object.keys(pos).forEach(function(id){
-        updates.push({ id: id, x: pos[id].x, y: pos[id].y, fixed: { x: true, y: true } });
-      });
-      if (updates.length) nodes.update(updates);
-    } catch(e){}
-  }
-  function releaseNodes(){
-    try {
-      var updates = [];
-      nodes.forEach(function(n){ updates.push({ id: n.id, fixed: { x: false, y: false } }); });
-      if (updates.length) nodes.update(updates);
-    } catch(e){}
-  }
   function settle(){
     if (_settled) return;
     _settled = true;
-    // Freeze each node at its current x,y so subsequent physics ticks cannot
-    // drift them. The physics engine itself stays in whatever state the
-    // checkbox says (on by default).
-    freezeNodesInPlace();
+    // Disable physics so the network stops drifting/jittering on hover/click.
+    try { network.setOptions({ physics: { enabled: false } }); } catch(e){}
+    // Two rAFs so the freeze + fit are committed before reveal.
     requestAnimationFrame(function(){
       try { network.fit({ animation: false }); } catch(e){}
       requestAnimationFrame(function(){
@@ -1491,11 +1471,11 @@ More: [open dossier](https://example.com)</pre>
       });
     });
   }
-  // Re-arm whenever a new dataset is loaded (refresh / new URL / re-stabilize).
+  // Re-arm whenever a new dataset is loaded (refresh / new URL / etc.)
   function rearmStabilizing(){
     _settled = false;
     showStabilizing();
-    releaseNodes(); // let physics move them again until next settle
+    try { network.setOptions({ physics: { enabled: true } }); } catch(e){}
   }
   // Wrap setData so EVERY data load goes through the freeze-then-reveal flow.
   var _setData_orig = network.setData.bind(network);
@@ -1503,13 +1483,14 @@ More: [open dossier](https://example.com)</pre>
     rearmStabilizing();
     return _setData_orig(data);
   };
-  // "stabilized" fires when velocity drops below threshold (true convergence).
-  // "stabilizationIterationsDone" is the iteration-budget fallback.
+  // The "stabilized" event only fires when the engine has truly converged
+  // (velocity below threshold). Falls back to "stabilizationIterationsDone".
   network.on('stabilized', settle);
   network.on('stabilizationIterationsDone', settle);
+  // Safety: empty / single-node networks may never fire either event.
   setTimeout(function(){ if (!_settled) settle(); }, 8000);
 
-  // Re-stabilize button: release fixes, rerun engine, freeze again.
+  // Re-stabilize button (manual): unfreeze, rerun, freeze again.
   window.__restabilize = function(){
     rearmStabilizing();
     try { network.stabilize(); } catch(e){}
@@ -1520,17 +1501,9 @@ More: [open dossier](https://example.com)</pre>
     if(this.checked) edges.forEach(e=>{edges.update({id:e.id,color:e.originalColor||'gray'});});
     else edges.forEach(e=>{edges.update({id:e.id,color:'gray'});});
   });
-  // Physics toggle. When the user re-enables physics we release the freeze
-  // we put on each node at settle time, so the engine can actually move
-  // things around again (otherwise "Physics on" would feel dead).
+  // Physics toggle
   document.getElementById("physicsCheck").addEventListener("change",function(){
-    options.physics.enabled = this.checked;
-    if (this.checked) {
-      if (typeof releaseNodes === 'function') releaseNodes();
-      _settled = false; // allow next settle to refreeze
-    }
-    network.setOptions(options);
-    network.redraw();
+    options.physics.enabled=this.checked; network.setOptions(options); network.redraw();
   });
   // Curved edges toggle
   document.getElementById("curvedEdgesCheckbox").addEventListener("change",function(){
