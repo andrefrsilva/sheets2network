@@ -217,34 +217,6 @@
     }
     @media(min-width:768px){ #mynetwork { height: 620px; } }
 
-    /* --- Stabilization overlay (hide canvas while physics settles) --- */
-    #mynetwork.stabilizing > canvas {
-      visibility: hidden;
-    }
-    .stab-overlay {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 14px;
-      background: var(--surface);
-      z-index: 5;
-      color: var(--text-muted);
-      font-size: 13px;
-      letter-spacing: 0.02em;
-    }
-    #mynetwork.stabilizing .stab-overlay { display: flex; }
-    .stab-spinner {
-      width: 28px; height: 28px;
-      border: 3px solid rgba(0,0,0,0.08);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: stab-spin 0.9s linear infinite;
-    }
-    @keyframes stab-spin { to { transform: rotate(360deg); } }
-
     .vis-tooltip { z-index: 10000 !important; }
 
     /* --- Error panel --- */
@@ -832,7 +804,7 @@
   <div id="errorPanel" aria-live="polite"></div>
 
   <!-- Network -->
-  <div id="mynetwork"><div class="stab-overlay" id="stabOverlay"><div class="stab-spinner"></div><div>A calcular rede…</div></div></div>
+  <div id="mynetwork"></div>
 
   <!-- Kanban -->
   <div id="kanbanContainer" style="display:none;">
@@ -1158,7 +1130,7 @@
   var edgeLinkSet = new Set(); // edge IDs that are "link" type (bidirectional)
 
   var options = {
-    layout: { randomSeed: 2, improvedLayout: true },
+    layout: { randomSeed: 2 },
     physics: {
       enabled: true, solver: "barnesHut",
       barnesHut: { gravitationalConstant:-8000, springLength:50, centralGravity:0.01 },
@@ -1176,19 +1148,6 @@
     }
   };
   var network = new vis.Network(container,{nodes:nodes,edges:edges},options);
-
-  // Stabilization overlay: hide canvas while physics settles, show only the
-  // final layout. Avoids the visible swing-into-place each refresh.
-  function showStabilizing(){ container.classList.add('stabilizing'); }
-  function hideStabilizing(){ container.classList.remove('stabilizing'); }
-  network.on('startStabilizing', showStabilizing);
-  network.on('stabilizationIterationsDone', function(){
-    try { network.fit(); } catch(e){}
-    hideStabilizing();
-  });
-  // Safety: in case events misfire, force-reveal after 8 s.
-  network.on('stabilizationProgress', function(){ /* keep alive */ });
-  setTimeout(hideStabilizing, 8000);
 
   // Edge colors toggle
   document.getElementById("edgesColorCheckbox").addEventListener("change",function(){
@@ -2310,7 +2269,6 @@
           }
         });
 
-        showStabilizing();
         network.setData({nodes:nodes,edges:edges});
         renderGroupToggles();
         renderColorGradingToggles();
