@@ -245,62 +245,7 @@
     }
     @keyframes stab-spin { to { transform: rotate(360deg); } }
 
-    /* --- Rich tooltips (nodes / edges) ---
-       Wide enough to read, narrow enough to fit on mobile, soft shadow,
-       allows Markdown rendering + whitelisted inline HTML. */
-    .vis-tooltip {
-      max-width: min(380px, calc(100vw - 32px)) !important;
-      min-width: 0 !important;
-      white-space: normal !important;
-      word-wrap: break-word !important;
-      overflow-wrap: anywhere !important;
-      line-height: 1.55 !important;
-      font-size: 13px !important;
-      font-family: var(--font, 'Inter'), system-ui, -apple-system, sans-serif !important;
-      padding: 12px 14px !important;
-      background: rgba(255,255,255,0.98) !important;
-      color: #1A1A1A !important;
-      border: 1px solid rgba(0,0,0,0.08) !important;
-      border-radius: 8px !important;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.16) !important;
-      z-index: 10000 !important;
-    }
-    .vis-tooltip strong, .vis-tooltip b { font-weight: 700; }
-    .vis-tooltip em, .vis-tooltip i { font-style: italic; }
-    .vis-tooltip u { text-decoration: underline; }
-    .vis-tooltip small { font-size: 0.85em; opacity: 0.85; }
-    .vis-tooltip h1, .vis-tooltip h2, .vis-tooltip h3, .vis-tooltip h4 {
-      font-weight: 700; margin: 2px 0 4px;
-    }
-    .vis-tooltip h1 { font-size: 15px; }
-    .vis-tooltip h2 { font-size: 14px; }
-    .vis-tooltip h3 { font-size: 13px; }
-    .vis-tooltip h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; opacity: 0.75; }
-    .vis-tooltip code {
-      background: rgba(0,0,0,0.06);
-      padding: 1px 5px;
-      border-radius: 3px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px;
-    }
-    .vis-tooltip pre {
-      background: rgba(0,0,0,0.06);
-      padding: 8px 10px;
-      border-radius: 6px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px;
-      white-space: pre-wrap;
-      margin: 4px 0;
-    }
-    .vis-tooltip a {
-      color: var(--accent, #2BB386);
-      text-decoration: underline;
-    }
-    .vis-tooltip ul { margin: 4px 0 4px 18px; padding: 0; }
-    .vis-tooltip li { margin: 1px 0; }
-    @media (max-width: 480px) {
-      .vis-tooltip { font-size: 12px !important; padding: 10px 12px !important; }
-    }
+    .vis-tooltip { z-index: 10000 !important; }
 
     /* --- Error panel --- */
     #errorPanel {
@@ -887,7 +832,7 @@
   <div id="errorPanel" aria-live="polite"></div>
 
   <!-- Network -->
-  <div id="mynetwork" class="stabilizing"><div class="stab-overlay" id="stabOverlay"><div class="stab-spinner"></div><div>A calcular rede…</div></div></div>
+  <div id="mynetwork"><div class="stab-overlay" id="stabOverlay"><div class="stab-spinner"></div><div>A calcular rede…</div></div></div>
 
   <!-- Kanban -->
   <div id="kanbanContainer" style="display:none;">
@@ -1232,120 +1177,18 @@
   };
   var network = new vis.Network(container,{nodes:nodes,edges:edges},options);
 
-  /* --- Rich tooltip rendering -------------------------------------------------
-   * Accepts the raw "title" string from the Excel cell and turns it into a DOM
-   * element that vis.js renders as a tooltip.
-   *
-   * What the cell may contain:
-   *   - Plain text on a single line.
-   *   - Multi-line text: press Alt+Enter inside the Excel cell. We honour the
-   *     real newlines ("\n") as <br>.
-   *   - Markdown light:
-   *       **bold**, *italic*, `code`, [link](https://...)
-   *       lines starting with "- " or "* " become a bullet list
-   *       lines starting with "# ", "## ", "### " become small headers
-   *   - Inline HTML, whitelist only (anything else is escaped and shown as
-   *     literal text — safe by default):
-   *       <b> <strong> <i> <em> <u> <br> <small> <code> <pre>
-   *       <h1>-<h4>
-   *       <a href="https://..."> (only http/https links)
-   *       <span style="color: ..."> / <span style="font-size: 14px"> /
-   *       <span style="background: ..."> (limited style whitelist)
-   * Anything outside the whitelist is rendered as literal text — no XSS risk.
-   */
-  function renderTooltipText(raw){
-    if (raw === undefined || raw === null) return null;
-    var s = String(raw);
-    if (!s.trim()) return null;
-
-    // 1. Escape ALL HTML first
-    s = s.replace(/&/g, '&amp;')
-         .replace(/</g, '&lt;')
-         .replace(/>/g, '&gt;')
-         .replace(/"/g, '&quot;');
-
-    // 2. Re-allow whitelisted plain tags (no attributes)
-    var SIMPLE_TAGS = ['b','strong','i','em','u','br','small','code','pre','h1','h2','h3','h4'];
-    SIMPLE_TAGS.forEach(function(tag){
-      s = s.replace(new RegExp('&lt;(' + tag + ')&gt;', 'gi'), '<$1>');
-      s = s.replace(new RegExp('&lt;\\/(' + tag + ')&gt;', 'gi'), '</$1>');
-    });
-
-    // 3. Re-allow <a href="http(s)://...">…</a>
-    s = s.replace(/&lt;a\s+href=&quot;(https?:\/\/[^&"]+)&quot;&gt;/gi,
-                  '<a href="$1" target="_blank" rel="noopener noreferrer">');
-    s = s.replace(/&lt;\/a&gt;/gi, '</a>');
-
-    // 4. Re-allow <span style="color:..."> / "font-size:Xpx" / "background:..."
-    s = s.replace(
-      /&lt;span\s+style=&quot;((?:color|font-size|background|background-color)\s*:\s*[#\w(),. %\-]+)&quot;&gt;/gi,
-      '<span style="$1">'
-    );
-    s = s.replace(/&lt;\/span&gt;/gi, '</span>');
-
-    // 5. Markdown light (run after HTML reinjection so tags inside markdown work)
-    s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-    s = s.replace(/(^|[\s(])\*([^*\n]+)\*(?=$|[\s.,!?;:)])/g, '$1<em>$2</em>');
-    s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
-                  '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-
-    // 6. Headers and bullets work on a line basis
-    var lines = s.split(/\r\n|\r|\n/);
-    var out = [];
-    var listOpen = false;
-    lines.forEach(function(line){
-      var m;
-      if ((m = line.match(/^\s*###\s+(.*)$/))) { if (listOpen) { out.push('</ul>'); listOpen = false; } out.push('<h3>' + m[1] + '</h3>'); }
-      else if ((m = line.match(/^\s*##\s+(.*)$/))) { if (listOpen) { out.push('</ul>'); listOpen = false; } out.push('<h2>' + m[1] + '</h2>'); }
-      else if ((m = line.match(/^\s*#\s+(.*)$/))) { if (listOpen) { out.push('</ul>'); listOpen = false; } out.push('<h1>' + m[1] + '</h1>'); }
-      else if ((m = line.match(/^\s*[-*]\s+(.*)$/))) {
-        if (!listOpen) { out.push('<ul>'); listOpen = true; }
-        out.push('<li>' + m[1] + '</li>');
-      } else {
-        if (listOpen) { out.push('</ul>'); listOpen = false; }
-        out.push(line);
-      }
-    });
-    if (listOpen) out.push('</ul>');
-    s = out.join('<br>')
-           .replace(/<br><(h[1-4]|ul|\/ul|li|\/li)>/g, '<$1>')
-           .replace(/<\/(h[1-4]|ul|li)><br>/g, '</$1>');
-
-    var wrap = document.createElement('div');
-    wrap.innerHTML = s;
-    return wrap;
-  }
-  // Exposed so processExcel can call directly without scoping concerns.
-  window.__renderTooltipText = renderTooltipText;
-
   // Stabilization overlay: hide canvas while physics settles, show only the
-  // final layout. The container starts with class="stabilizing" in the HTML
-  // so the canvas never paints a single frame before the layout is solved.
+  // final layout. Avoids the visible swing-into-place each refresh.
   function showStabilizing(){ container.classList.add('stabilizing'); }
-  function hideStabilizing(){
-    container.classList.remove('stabilizing');
-    container.classList.add('stabilized');
-  }
-  // Defensive: re-show overlay whenever a new dataset is about to be applied.
-  var _setData_orig = network.setData.bind(network);
-  network.setData = function(data){
-    showStabilizing();
-    return _setData_orig(data);
-  };
+  function hideStabilizing(){ container.classList.remove('stabilizing'); }
   network.on('startStabilizing', showStabilizing);
   network.on('stabilizationIterationsDone', function(){
-    // tiny rAF delay so the final positions are committed before reveal
-    requestAnimationFrame(function(){
-      try { network.fit({ animation: false }); } catch(e){}
-      requestAnimationFrame(hideStabilizing);
-    });
+    try { network.fit(); } catch(e){}
+    hideStabilizing();
   });
-  // Safety: in case events misfire (e.g. empty network or pre-positioned nodes),
-  // force-reveal after 8 s. Empty network is handled below in DOMContentLoaded.
-  setTimeout(function(){
-    if (container.classList.contains('stabilizing')) hideStabilizing();
-  }, 8000);
+  // Safety: in case events misfire, force-reveal after 8 s.
+  network.on('stabilizationProgress', function(){ /* keep alive */ });
+  setTimeout(hideStabilizing, 8000);
 
   // Edge colors toggle
   document.getElementById("edgesColorCheckbox").addEventListener("change",function(){
@@ -2364,7 +2207,7 @@
           var kanbanVal=null;
           if(kanbanIndex>=0&&row[kanbanIndex])kanbanVal=row[kanbanIndex];
 
-          var nodeObj={id:nodeId,label:row[0],value:value,color:color,originalColor:color,title:renderTooltipText(title),group:group,hidden:group?!groupFilters[group]:false,sortData:{},kanbanValue:kanbanVal};
+          var nodeObj={id:nodeId,label:row[0],value:value,color:color,originalColor:color,title:title,group:group,hidden:group?!groupFilters[group]:false,sortData:{},kanbanValue:kanbanVal};
 
           if(iconUrlIndex>-1){
             let iconUrl=row[iconUrlIndex]?row[iconUrlIndex].toString().trim():"";
@@ -2439,7 +2282,7 @@
             id:edgeId, from:fromNode, to:toNode,
             arrows:(relation==="link"?"":"to"),
             color:colorE, originalColor:colorE, dashes:dashes,
-            title:renderTooltipText(title), width:thickness, rawWidth:rawWeight, length:length
+            title:title, width:thickness, rawWidth:rawWeight, length:length
           });
         });
 
