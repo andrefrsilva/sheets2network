@@ -302,73 +302,6 @@
       .vis-tooltip { font-size: 12px !important; padding: 10px 12px !important; }
     }
 
-    /* --- Help panel for tooltip formatting --- */
-    .help-tooltip-formatting summary { list-style: none; }
-    .help-tooltip-formatting summary::-webkit-details-marker { display: none; }
-    .help-tooltip-formatting .help-caret {
-      display: inline-block; transition: transform 0.15s ease;
-      color: var(--accent, #2BB386); font-size: 14px;
-    }
-    .help-tooltip-formatting[open] .help-caret { transform: rotate(90deg); }
-    .help-tooltip-formatting .help-body {
-      padding: 12px 4px 4px;
-      font-size: 13px;
-      color: var(--text, #1A1A1A);
-      line-height: 1.55;
-    }
-    .help-tooltip-formatting .help-body p { margin: 0 0 8px; }
-    .help-tooltip-formatting .help-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
-      margin: 10px 0;
-    }
-    @media(min-width:720px){
-      .help-tooltip-formatting .help-grid { grid-template-columns: repeat(3, 1fr); }
-    }
-    .help-tooltip-formatting h4 {
-      font-size: 12px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.05em;
-      color: var(--text-muted, #6B7280);
-      margin: 0 0 6px;
-    }
-    .help-tooltip-formatting .help-list { margin: 0; padding-left: 16px; }
-    .help-tooltip-formatting .help-list li { margin: 3px 0; }
-    .help-tooltip-formatting code {
-      background: rgba(0,0,0,0.06);
-      padding: 1px 5px;
-      border-radius: 3px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px;
-    }
-    .help-tooltip-formatting kbd {
-      display: inline-block;
-      padding: 0 5px;
-      border: 1px solid rgba(0,0,0,0.15);
-      border-bottom-width: 2px;
-      border-radius: 3px;
-      background: var(--surface, #fff);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 11px;
-    }
-    .help-tooltip-formatting pre {
-      background: var(--surface, #fff);
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 6px;
-      padding: 10px 12px;
-      overflow-x: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px;
-      line-height: 1.5;
-      margin: 6px 0;
-    }
-    .help-tooltip-formatting .help-example { margin-top: 10px; }
-    .help-tooltip-formatting .help-note {
-      margin-top: 10px;
-      font-size: 12px;
-      color: var(--text-muted, #6B7280);
-    }
-
     /* --- Error panel --- */
     #errorPanel {
       font-size: 12px;
@@ -1014,67 +947,6 @@
     <div id="clusteringResults" style="display:none;"></div>
   </div>
 
-  <div class="section">
-    <details open class="help-tooltip-formatting">
-      <summary class="section-title" style="cursor:pointer;display:flex;align-items:center;gap:8px;">
-        <span class="help-caret">▸</span>
-        How to format tooltips (the <code>title</code> column on nodes and edges)
-      </summary>
-      <div class="help-body">
-        <p>The <strong>title</strong> column in the <code>nodes</code> and <code>edges</code> sheets becomes the
-        tooltip you see on hover. You can write rich content directly in Excel — it is rendered safely.</p>
-
-        <div class="help-grid">
-          <div>
-            <h4>Multi-line</h4>
-            <p>Press <kbd>Alt</kbd>+<kbd>Enter</kbd> inside the cell. The new line is honoured as a line break.</p>
-          </div>
-          <div>
-            <h4>Markdown light</h4>
-            <ul class="help-list">
-              <li><code>**bold**</code> &rarr; <strong>bold</strong></li>
-              <li><code>*italic*</code> &rarr; <em>italic</em></li>
-              <li><code>`code`</code> &rarr; <code>code</code></li>
-              <li><code>[label](https://example.com)</code> &rarr; <a href="#">label</a></li>
-              <li><code>- item</code> at the start of a line &rarr; bullet list</li>
-              <li><code># Heading</code>, <code>## Sub</code>, <code>### Small</code> &rarr; headings</li>
-            </ul>
-          </div>
-          <div>
-            <h4>Inline HTML (whitelist)</h4>
-            <p>These tags pass through; anything else is escaped to plain text (zero XSS risk).</p>
-            <ul class="help-list">
-              <li><code>&lt;b&gt;</code> <code>&lt;strong&gt;</code> <code>&lt;i&gt;</code> <code>&lt;em&gt;</code> <code>&lt;u&gt;</code> <code>&lt;br&gt;</code> <code>&lt;small&gt;</code> <code>&lt;code&gt;</code> <code>&lt;pre&gt;</code></li>
-              <li><code>&lt;h1&gt;</code> &hellip; <code>&lt;h4&gt;</code></li>
-              <li><code>&lt;a href="https://&hellip;"&gt;</code> (only http / https)</li>
-              <li><code>&lt;span style="color: red"&gt;</code></li>
-              <li><code>&lt;span style="font-size: 14px"&gt;</code></li>
-              <li><code>&lt;span style="background: yellow"&gt;</code></li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="help-example">
-          <h4>Example you can paste directly into a cell</h4>
-          <pre>## Customer A
-**Revenue:** &lt;span style="color:#2BB386"&gt;€124k&lt;/span&gt;
-*Status:* on track
-
-Key contacts:
-- Joana Pires (CFO)
-- &lt;span style="background:#FFF1A8"&gt;Renew contract in Jun&lt;/span&gt;
-
-More: [open dossier](https://example.com)</pre>
-        </div>
-
-        <p class="help-note"><strong>Safety:</strong> tags or attributes outside the list above are shown as
-        plain text. Links must start with <code>http://</code> or <code>https://</code>. Inline styles only
-        accept <code>color</code>, <code>font-size</code>, <code>background</code> and
-        <code>background-color</code>.</p>
-      </div>
-    </details>
-  </div>
-
 </div>
 
 <!-- Footer -->
@@ -1450,51 +1322,30 @@ More: [open dossier](https://example.com)</pre>
   // Stabilization overlay: hide canvas while physics settles, show only the
   // final layout. The container starts with class="stabilizing" in the HTML
   // so the canvas never paints a single frame before the layout is solved.
-  // After stabilization we FREEZE physics so the network stops moving forever
-  // — clicking refresh again will reproduce the exact same layout.
-  function showStabilizing(){
-    container.classList.remove('stabilized');
-    container.classList.add('stabilizing');
+  function showStabilizing(){ container.classList.add('stabilizing'); }
+  function hideStabilizing(){
+    container.classList.remove('stabilizing');
+    container.classList.add('stabilized');
   }
-  var _settled = false;
-  function settle(){
-    if (_settled) return;
-    _settled = true;
-    // Disable physics so the network stops drifting/jittering on hover/click.
-    try { network.setOptions({ physics: { enabled: false } }); } catch(e){}
-    // Two rAFs so the freeze + fit are committed before reveal.
-    requestAnimationFrame(function(){
-      try { network.fit({ animation: false }); } catch(e){}
-      requestAnimationFrame(function(){
-        container.classList.remove('stabilizing');
-        container.classList.add('stabilized');
-      });
-    });
-  }
-  // Re-arm whenever a new dataset is loaded (refresh / new URL / etc.)
-  function rearmStabilizing(){
-    _settled = false;
-    showStabilizing();
-    try { network.setOptions({ physics: { enabled: true } }); } catch(e){}
-  }
-  // Wrap setData so EVERY data load goes through the freeze-then-reveal flow.
+  // Defensive: re-show overlay whenever a new dataset is about to be applied.
   var _setData_orig = network.setData.bind(network);
   network.setData = function(data){
-    rearmStabilizing();
+    showStabilizing();
     return _setData_orig(data);
   };
-  // The "stabilized" event only fires when the engine has truly converged
-  // (velocity below threshold). Falls back to "stabilizationIterationsDone".
-  network.on('stabilized', settle);
-  network.on('stabilizationIterationsDone', settle);
-  // Safety: empty / single-node networks may never fire either event.
-  setTimeout(function(){ if (!_settled) settle(); }, 8000);
-
-  // Re-stabilize button (manual): unfreeze, rerun, freeze again.
-  window.__restabilize = function(){
-    rearmStabilizing();
-    try { network.stabilize(); } catch(e){}
-  };
+  network.on('startStabilizing', showStabilizing);
+  network.on('stabilizationIterationsDone', function(){
+    // tiny rAF delay so the final positions are committed before reveal
+    requestAnimationFrame(function(){
+      try { network.fit({ animation: false }); } catch(e){}
+      requestAnimationFrame(hideStabilizing);
+    });
+  });
+  // Safety: in case events misfire (e.g. empty network or pre-positioned nodes),
+  // force-reveal after 8 s. Empty network is handled below in DOMContentLoaded.
+  setTimeout(function(){
+    if (container.classList.contains('stabilizing')) hideStabilizing();
+  }, 8000);
 
   // Edge colors toggle
   document.getElementById("edgesColorCheckbox").addEventListener("change",function(){
@@ -1878,14 +1729,12 @@ More: [open dossier](https://example.com)</pre>
       applySpringLengthToEdges(parseFloat($id('lpSpringLen').value));
       pushUIToPhysicsOptions();
       network.setOptions({ physics: options.physics });
-      if (typeof window.__restabilize === 'function') window.__restabilize();
-      else { try { network.stabilize(); } catch(e){} }
+      try { network.stabilize(); } catch(e){}
     });
 
     // ---- Re-stabilize button ----
     $id('lpStabilize').addEventListener('click', function(){
-      if (typeof window.__restabilize === 'function') window.__restabilize();
-      else { try { network.stabilize(); } catch(e){} }
+      try { network.stabilize(); } catch(e){}
     });
 
     // ---- Reset to site defaults ----
@@ -1921,8 +1770,7 @@ More: [open dossier](https://example.com)</pre>
       $id('lpConfineCanvas').checked = false;
       stopConfine();
       try { localStorage.removeItem(LP_STORAGE_KEY); } catch(e){}
-      if (typeof window.__restabilize === 'function') window.__restabilize();
-      else { try { network.stabilize(); } catch(e){} }
+      try { network.stabilize(); } catch(e){}
     });
 
     // ---- Persist all UI values to localStorage on every change ----
