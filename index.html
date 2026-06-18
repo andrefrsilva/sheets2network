@@ -1317,7 +1317,7 @@ More: [open dossier](https://example.com)</pre>
     nodes: {
       shape: "dot",
       scaling: { customScalingFunction:function(min,max,total,value){return value/total;}, min:5, max:50 },
-      font: { size: 14, color: '#000000', strokeWidth: 6, strokeColor: '#ffffff', background: '#ffffff' }
+      font: { size: 14, color: '#000000', strokeWidth: 2, strokeColor: '#ffffff' }
     },
     edges: {
       color:{inherit:false}, width:1, length:100,
@@ -1328,53 +1328,6 @@ More: [open dossier](https://example.com)</pre>
     }
   };
   var network = new vis.Network(container,{nodes:nodes,edges:edges},options);
-
-  // Force node labels ALWAYS on top of edges and arrows.
-  // vis-network draws edges (including arrow heads) after node bodies, so labels
-  // can be visually crossed by thick edges that pass through the node area.
-  // The native label is hidden (transparent fill) and we redraw every label here,
-  // in the afterDrawing event, which fires last in the render cycle.
-  network.on('beforeDrawing', function (ctx) {
-    // tag context with current zoom-aware font for our overlay
-    ctx.__s2nFontSize = (options.nodes.font && options.nodes.font.size) || 14;
-  });
-  network.on('afterDrawing', function (ctx) {
-    try {
-      var positions = network.getPositions();
-      var data = network.body.data.nodes.get();
-      var fontSize = ctx.__s2nFontSize || 14;
-      ctx.save();
-      ctx.font = fontSize + 'px "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      for (var i = 0; i < data.length; i++) {
-        var n = data[i];
-        if (!n || !n.label) continue;
-        var pos = positions[n.id];
-        if (!pos) continue;
-        // estimate node radius: dot shapes use options.nodes.size or scaled value
-        var nodeObj = network.body.nodes[n.id];
-        var radius = (nodeObj && nodeObj.shape && nodeObj.shape.radius) ? nodeObj.shape.radius : 12;
-        var label = String(n.label);
-        var x = pos.x;
-        var y = pos.y + radius + 6; // place label below the node
-        // halo for legibility
-        ctx.lineWidth = 6;
-        ctx.lineJoin = 'round';
-        ctx.strokeStyle = '#ffffff';
-        ctx.strokeText(label, x, y);
-        // fill
-        ctx.fillStyle = '#141B29';
-        ctx.fillText(label, x, y);
-      }
-      ctx.restore();
-    } catch (e) {
-      // swallow: if vis-network internals change shape, do not break the page
-      console.warn('[s2n] afterDrawing label overlay failed', e);
-    }
-  });
-  // Hide native labels so we do not get duplicated text
-  network.setOptions({ nodes: { font: { color: 'rgba(0,0,0,0)', strokeWidth: 0 } } });
 
   /* --- Rich tooltip rendering --------------------------------------------
    * The "comment" column in the Excel (column D in `nodes`, column E in
