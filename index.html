@@ -1450,13 +1450,18 @@ More: [open dossier](https://example.com)</pre>
     if(this.checked) edges.forEach(e=>{edges.update({id:e.id,color:e.originalColor||'gray'});});
     else edges.forEach(e=>{edges.update({id:e.id,color:'gray'});});
   });
-  // Physics toggle
+  // Physics toggle. Send only the changed branch, so vis-network's shallow merge
+  // does not stomp on the global font config (strokeWidth, strokeColor, etc.).
   document.getElementById("physicsCheck").addEventListener("change",function(){
-    options.physics.enabled=this.checked; network.setOptions(options); network.redraw();
+    options.physics.enabled=this.checked;
+    network.setOptions({ physics: options.physics });
+    network.redraw();
   });
-  // Curved edges toggle
+  // Curved edges toggle. Same defensive pattern: send only the edges branch.
   document.getElementById("curvedEdgesCheckbox").addEventListener("change",function(){
-    options.edges.smooth.enabled=this.checked; network.setOptions(options); network.redraw();
+    options.edges.smooth.enabled=this.checked;
+    network.setOptions({ edges: { smooth: options.edges.smooth } });
+    network.redraw();
   });
 
   /***************
@@ -1695,8 +1700,16 @@ More: [open dossier](https://example.com)</pre>
     }
 
     // ---- Apply visuals (font, labels) directly ----
-    function applyFontSize(v){ network.setOptions({ nodes: { font: { size: v } } }); }
-    function applyShowLabels(show){ network.setOptions({ nodes: { font: { color: show ? '#000000' : 'rgba(0,0,0,0)' } } }); }
+    // vis-network does a shallow merge on setOptions, so we always re-send the
+    // full font object — partial sends would clobber strokeWidth/strokeColor.
+    function applyFontSize(v){
+      options.nodes.font.size = v;
+      network.setOptions({ nodes: { font: Object.assign({}, options.nodes.font) } });
+    }
+    function applyShowLabels(show){
+      options.nodes.font.color = show ? '#000000' : 'rgba(0,0,0,0)';
+      network.setOptions({ nodes: { font: Object.assign({}, options.nodes.font) } });
+    }
 
     // ---- Slider <output> sync ----
     function syncOutput(id, valId, fmt){
