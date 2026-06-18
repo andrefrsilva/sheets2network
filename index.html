@@ -1317,10 +1317,13 @@ More: [open dossier](https://example.com)</pre>
     nodes: {
       shape: "dot",
       scaling: { customScalingFunction:function(min,max,total,value){return value/total;}, min:5, max:50 },
-      font: { size: 14, color: '#000000', strokeWidth: 2, strokeColor: '#ffffff' }
+      font: { size: 14, color: '#000000', strokeWidth: 4, strokeColor: '#ffffff' }
     },
     edges: {
       color:{inherit:false}, width:1, length:100,
+      arrows: {
+        to: { enabled: true, scaleFactor: 0.6, endPointOffset: { from: 0, to: 8 } }
+      },
       // type 'continuous' is safe whether smooth.enabled is true or false.
       // 'dynamic' (the previous value) introduces support nodes when enabled,
       // adding extra non-determinism we don't need.
